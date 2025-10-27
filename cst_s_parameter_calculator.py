@@ -126,7 +126,8 @@ class CSTSParameterCalculator:
 
         try:
             # 创建新项目
-            self.project = self.cst.NewProject("MWS")
+            # self.project = self.cst.NewProject("MWS")
+            self.project = self.cst.NewProject(1)
             print("✅ 新项目创建成功")
 
             # 保存项目
