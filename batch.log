@@ -1,0 +1,592 @@
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 4:02:34 PM  Oct 28, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 65519. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__HVNXHG has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpimff0sq6.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpimff0sq6.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.05741572380065918
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 50.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpimff0sq6.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpimff0sq6.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.04116082191467285
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Solution Data Correctly Loaded.
+        [info] Active Design set to patch
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 4:04:45 PM  Oct 28, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 4:05:29 PM  Oct 28, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+[warning] Electronics Desktop cannot be closed right now because it is being used by another application, script or extension wizard.
+
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 4:06:26 PM  Oct 28, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 62649. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__EZ49AJ has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmplaksmi7e.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmplaksmi7e.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.06900906562805176
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 51.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmplaksmi7e.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmplaksmi7e.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.03756308555603027
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Solution Data Correctly Loaded.
+        [info] Active Design set to patch
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 4:08:42 PM  Oct 28, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 4:12:39 PM  Oct 28, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 4:15:28 PM  Oct 28, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 4:21:46 PM  Oct 28, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 60462. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__GXC6JA has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpfj92psus.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpfj92psus.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.06501197814941406
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 51.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpfj92psus.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpfj92psus.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.03646445274353027
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [warning] Property `far_field_sphere` not found.
+        [warning] Solution Data failed to load. Check solution, context or expression.
+        [warning] No Data Available. Check inputs
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 4:23:02 PM  Oct 28, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 4:27:02 PM  Oct 28, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+[error] The trace component portion is invalid.
+The Mag component is invalid.
+
+[error] The trace component portion is invalid.
+The Mag component is invalid.
+
+[error] The trace component portion is invalid.
+The Mag component is invalid.
+
+[error] The trace component portion is invalid.
+The Mag component is invalid.
+
+[error] The trace component portion is invalid.
+The Mag component is invalid.
+
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 4:32:03 PM  Oct 28, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 53176. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__H4PVV5 has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmp30v24k_2.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmp30v24k_2.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.07352876663208008
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 52.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmp30v24k_2.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmp30v24k_2.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.05044150352478027
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 4:33:25 PM  Oct 28, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 4:44:09 PM  Oct 28, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 64810. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__ZH6ZY6 has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpwpxl7l1u.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpwpxl7l1u.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.07162976264953613
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 51.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpwpxl7l1u.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpwpxl7l1u.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.04038691520690918
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 4:48:46 PM  Oct 28, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 5:05:43 PM  Oct 28, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 63633. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__XZ8STP has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpj0ov7mqr.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpj0ov7mqr.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.09754705429077148
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 52.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpj0ov7mqr.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpj0ov7mqr.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.05118203163146973
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 5:07:38 PM  Oct 28, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 5:08:19 PM  Oct 28, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 63098. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__WG8418 has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpnk4roea4.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpnk4roea4.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.07495307922363281
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 50.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpnk4roea4.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpnk4roea4.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.045702219009399414
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 5:10:51 PM  Oct 28, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 5:11:37 PM  Oct 28, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 49261. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__FQ42JI has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpiydw4spt.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpiydw4spt.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.0641789436340332
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 46.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpiydw4spt.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpiydw4spt.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.03854775428771973
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 5:13:24 PM  Oct 28, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 5:37:49 PM  Oct 28, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 54905. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__O35EHF has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpomnr9qkx.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpomnr9qkx.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.03177809715270996
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 48.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpomnr9qkx.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpomnr9qkx.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.037560224533081055
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 5:39:20 PM  Oct 28, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 5:41:06 PM  Oct 28, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 5:42:02 PM  Oct 28, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 64755. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__93L7ZQ has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmptl27sdls.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmptl27sdls.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.057236671447753906
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 50.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmptl27sdls.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmptl27sdls.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.039684295654296875
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 5:43:33 PM  Oct 28, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 5:44:42 PM  Oct 28, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 58352. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__2JLR20 has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmp3ik1vw8k.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmp3ik1vw8k.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.029748201370239258
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 49.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmp3ik1vw8k.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmp3ik1vw8k.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.038701772689819336
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 5:45:58 PM  Oct 28, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 5:46:25 PM  Oct 28, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 5:56:17 PM  Oct 28, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 57915. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__53OSMD has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmp5vrmak1h.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmp5vrmak1h.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.03337383270263672
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 49.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmp5vrmak1h.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmp5vrmak1h.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.04010820388793945
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 5:57:33 PM  Oct 28, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 5:58:17 PM  Oct 28, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 55514. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__R8P6Q9 has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmp8_uq6ljc.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmp8_uq6ljc.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.030672550201416016
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 49.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmp8_uq6ljc.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmp8_uq6ljc.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.03667640686035156
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 5:59:53 PM  Oct 28, 2025
