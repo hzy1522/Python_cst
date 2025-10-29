@@ -4,6 +4,7 @@ import time
 
 import ansys.aedt.core
 from ansys.aedt.core.modeler.advanced_cad.stackup_3d import Stackup3D
+from ansys.aedt.core.visualization.advanced.farfield_visualization import FfdSolutionData
 from django.contrib.messages import success
 from ansys.aedt.core import Hfss
 import matplotlib.pyplot as plt
@@ -29,9 +30,10 @@ class AdvancedHFSSEntennaSimulator:
             "patch_length": 9.57, # 贴片长度(mm)
             "patch_width": 9.25, #
             "patch_name": "Patch",
-
+            "freq_step" : "0.5GHz",
         }
-
+        self.disc_sweep = None
+        self.interp_sweep = None
     def run_full_hfss_simulation(self):
         print("=" * 80)
         print("开始增强版微带贴片天线 HFSS 仿真流程")
@@ -97,6 +99,9 @@ class AdvancedHFSSEntennaSimulator:
             new_desktop=True,
             version=self.AEDT_VERSION,
         )
+        # self.hfss.set_variable("ANSYSSYS_GPU", "1")
+        # self.hfss.hfss_set_solver_options(solver_type="gpu")
+
         print("=" * 80)
         return True
 
@@ -172,6 +177,16 @@ class AdvancedHFSSEntennaSimulator:
             stop_frequency=self.antenna_params["stop_frequency"],
             sweep_type=self.antenna_params["sweep_type"],
         )
+        # disc_sweep = setup.add_sweep(name="DiscreteSweep", sweep_type="Discrete",
+        #                              RangeStart=self.antenna_params["start_frequency"],
+        #                              RangeEnd=self.antenna_params["stop_frequency"],
+        #                              RangeStep=self.antenna_params["freq_step"],
+        #                              SaveFields=True)
+
+        # interp_sweep = setup.add_sweep(name="InterpolatingSweep", sweep_type="Interpolating",
+        #                                RangeStart=self.antenna_params["start_frequency"],
+        #                                RangeEnd=self.antenna_params["stop_frequency"],
+        #                                SaveFields=False)
         print("保存工程")
         self.hfss.save_project()  # Save the project.
         print("=" * 80)
@@ -215,54 +230,58 @@ class AdvancedHFSSEntennaSimulator:
         plt.show()
         print("=" * 80)
 
-        input("请按回车键继续...")
+        input("请按回车键继续1...")
         print("远区场辐射图")
-        sphere1 = self.hfss.insert_infinite_sphere()
-        sphere1.props["ThetaStart"] = "-90deg"
-        sphere1.props["ThetaStop"] = "90deg"
-        sphere1.props["ThetaStep"] = "2deg"
-        #sphere1.delete()
-        input("请按回车键继续...")
-        self.hfss.post.create_far_field_report('python-antenna',0,0,0, "test")
 
-        # solution = report.get_solution_data()
-        # print(f"polt_data {solution}")
-        # solution = report.get_far_field_report()
-        # plt = solution.plot(solution.expressions)
-        input("请按回车键继续...")
+        # variations = self.hfss.available_variations.nominal_values
+        # variations["Theta"] = ["All"]
+        # variations["Phi"] = ["All"]
+        # variations["Freq"] = ["10GHz"]
+        # elevation_ffd_plot = self.hfss.post.create_report(
+        #                     expressions = "db(GainTotal)",
+        #                     setup_sweep_name = self.hfss.nominal_adaptive,
+        #                     variations = variations,
+        #                     primary_sweep_variable = "Theta",
+        #                     context="Elevation",# Far-field setup is pre-defined.
+        #                     report_category = "Far Fields",
+        #                     plot_type = "Radiation Pattern",
+        #                     plot_name="Elevation Gain (dB)"
+        #                     )
+        # elevation_ffd_plot.children["Legend"].properties["Show Trace Name"] = False
+        # elevation_ffd_plot.children["Legend"].properties["Show Solution Name"] = False
+        #
+        # report_3d = self.hfss.post.reports_by_category.far_field("db(RealizedGainTheta)", "Setup : LastAdaptive", "3D_Sphere")
+        #
+        # report_3d.report_type = "3D Polar Plot"
+        # report_3d.create(name="Realized Gain (dB)")
+        #
+        # report_3d_data = report_3d.get_solution_data()
+        # new_plot = report_3d_data.plot_3d()
+        # new_plot.show()
 
-        variations = self.hfss.available_variations.nominal_values
-        variations["Theta"] = ["All"]
-        variations["Phi"] = ["All"]
-        variations["Freq"] = ["All"]
-        report = self.hfss.post.create_report(
-        expressions = "db(GainTotal)",
-        setup_sweep_name = self.hfss.nominal_adaptive,
-        variations = variations,
-        primary_sweep_variable = "Phi",
-        secondary_sweep_variable = "Theta",
-        report_category = "Far Fields",
-        plot_type = "3D Polar Plot",
-        context = "3D",
+        input("请按回车键继续11...")
+        print("=" * 80)
+        ffdata = self.hfss.get_antenna_data(
+            setup=self.hfss.nominal_adaptive,
+            sphere="Infinite Sphere1",
+            link_to_hfss = True)
+
+        ffdata.farfield_data.plot_cut(primary_sweep="theta", theta=0)
+        ffdata.farfield_data.plot_cut(
+            quantity="RealizedGain",
+            primary_sweep="phi",
+            title="Elevation",
+            quantity_format="dB10",
+        )
+        input("请按回车键继续2...")
+        ffdata.farfield_data.plot_3d(
+            quantity="RealizedGain",
+            quantity_format="dB10",
+            show=True,
         )
 
-        input("请按回车键继续...")
-        # report = self.hfss.post.reports_by_category.far_field("GainTotal", "Setup : LastAdaptive", "3D_Sphere")
-        # report.primary_sweep = "Phi"
-        # report.create()
-        # solutions = report.get_solution_data()
-        # plt = solution.plot(solutions.expressions)
+        input("请按回车键继续4...")
 
-        # print("远区场辐射图并将其导出为图像文件")
-        # cutlist = ["Global:XY"]
-        # setup_name = self.hfss.existing_analysis_sweeps[0]
-        # quantity_name = "ComplexMag_E"
-        # intrinsic = {"Freq": self.antenna_params["center_frequency"], "Phase": "180deg"}
-        # # Create a field plot
-        # plot1 = self.hfss.post.create_fieldplot_cutplane(objlist=cutlist,
-        #                                             quantityName=quantity_name,
-        #                                             setup=setup_name,
-        #                                             intrinsics=intrinsic)
         print("=" * 80)
 
         return True
