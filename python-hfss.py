@@ -3,6 +3,7 @@ import tempfile
 import time
 
 import ansys.aedt.core
+import pyvista as pv
 from ansys.aedt.core.modeler.advanced_cad.stackup_3d import Stackup3D
 from ansys.aedt.core.visualization.advanced.farfield_visualization import FfdSolutionData
 from django.contrib.messages import success
@@ -259,13 +260,13 @@ class AdvancedHFSSEntennaSimulator:
         # new_plot = report_3d_data.plot_3d()
         # new_plot.show()
 
-        input("请按回车键继续11...")
+
         print("=" * 80)
         ffdata = self.hfss.get_antenna_data(
             setup=self.hfss.nominal_adaptive,
             sphere="Infinite Sphere1",
             link_to_hfss = True)
-
+        input("请按回车键继续11...")
         ffdata.farfield_data.plot_cut(primary_sweep="theta", theta=0)
         ffdata.farfield_data.plot_cut(
             quantity="RealizedGain",
@@ -274,12 +275,25 @@ class AdvancedHFSSEntennaSimulator:
             quantity_format="dB10",
         )
         input("请按回车键继续2...")
+
+        # 步骤1：定义外部 PyVista 实例
+        # 创建一个 PyVista 渲染器（renderer）或 plotting 对象
+        external_pv = pv.Plotter()  # 最常用的实例类型，用于创建可视化场景
+        # （可选）给实例添加额外元素（如网格、坐标轴等，不影响传入，仅丰富场景）
+        external_pv.add_axes()  # 添加坐标轴
+        external_pv.set_background('white')  # 设置背景色
+
         ffdata.farfield_data.plot_3d(
             quantity="RealizedGain",
             quantity_format="dB10",
-            show=True,
+            show=False,
+            # show_as_standalone=True,
+            pyvista_object=external_pv,
         )
-
+        # img_data = external_pv.screenshot(return_img=True)
+        # plt.imshow(img_data)
+        # plt.show()
+        external_pv.show()
         input("请按回车键继续4...")
 
         print("=" * 80)
