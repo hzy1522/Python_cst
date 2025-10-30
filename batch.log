@@ -1475,3 +1475,629 @@ Project directory: C:\Users\Administrator\Documents\Ansoft
         [info] Project patch Saved correctly
 -- Message Window --
 Stopping Batch Run: 5:02:40 PM  Oct 29, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 9:02:49 AM  Oct 30, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 57391. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__XJQE08 has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmppwgc15qk.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmppwgc15qk.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.045270442962646484
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 50.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmppwgc15qk.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmppwgc15qk.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.0373382568359375
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Far field sphere Infinite Sphere1 is created.
+        [info] Solution Data Correctly Loaded.
+        [info] Exporting antenna metadata...
+        [info] Antenna metadata exported.
+        [info] Exporting geometry...
+        [info] Exporting embedded element patterns.... Done: 1.3349831104278564 seconds
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 9:04:51 AM  Oct 30, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 9:12:28 AM  Oct 30, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 56620. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__QABI4M has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpmghv_fat.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpmghv_fat.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.04447793960571289
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 48.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpmghv_fat.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpmghv_fat.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.035607337951660156
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Far field sphere Infinite Sphere1 is created.
+        [info] Solution Data Correctly Loaded.
+        [info] Exporting antenna metadata...
+        [info] Antenna metadata exported.
+        [info] Exporting geometry...
+        [info] Exporting embedded element patterns.... Done: 1.1189167499542236 seconds
+        [error] **************************************************************
+        [error]   File "E:\PythonProject-NNAntenna\python-hfss.py", line 351, in <module>
+        [error]     main()
+        [error]   File "E:\PythonProject-NNAntenna\python-hfss.py", line 339, in main
+        [error]     success = simulator.run_full_hfss_simulation()
+        [error]   File "E:\PythonProject-NNAntenna\python-hfss.py", line 64, in run_full_hfss_simulation
+        [error]     if not self.post_processing():
+        [error]   File "E:\PythonProject-NNAntenna\python-hfss.py", line 304, in post_processing
+        [error]     elevation_ffd_plot = self.hfss.post.create_report(expressions="db(GainTheta)",
+        [error] 'setup discretesweep not available in current design.' on _get_report_object
+        [error] Last Electronics Desktop Message - [error] 'setup discretesweep not available in current design.' on _get_report_object  
+        [error] Method arguments: 
+        [error]     expressions = db(GainTheta) 
+        [error]     setup_sweep_name = DiscreteSweep 
+        [error]     domain = Sweep 
+        [error]     variations = {'layer_1_position': '0mm', 'dielectric_thickness': '0.5mm', 'Patch_frequency': '10Hz', 'Patch_width': '9.25mm', 'Patch_position_x': '0mm', 'Patch_position_y': '0mm', 'probe_y_rel': '0', 'ground_thickness': '0.035mm', 'Patch_length':
+        [error]  '9.57mm', 'probe_x_rel': '0.485', 'signal_thickness': '0.035mm', '$cloned_copper_permittivity': '1', '$cloned_copper_conductivity': '58000000', '$cloned_copper_dielectric_loss_tangent': '0', '$cloned_copper_magnetic_loss_tangent': '0', '$cloned_air_
+        [error] permeability': '1.0000004', '$cloned_air_conductivity': '0', '$cloned_air_dielectric_loss_tangent': '0', '$cloned_air_magnetic_loss_tangent': '0', '$cloned_Duroid_tm_permeability': '1', '$cloned_Duroid_tm_conductivity': '0', '$cloned_Duroid_tm_magnet
+        [error] ic_loss_tangent': '0', '$cloned_air_permittivity': '1.0006', '$cloned_copper_permeability': '0.999991', '$cloned_Duroid_tm_dielectric_loss_tangent': '0.0009', '$cloned_Duroid_tm_permittivity': '2.2', 'Freq': ['10GHz'], 'Theta': ['All'], 'Phi': ['All'
+        [error] ]} 
+        [error]     primary_sweep_variable = Theta 
+        [error]     report_category = Far Fields 
+        [error]     context = Elevation 
+        [error]     polyline_points = 1001 
+        [error] **************************************************************
+        [error] **************************************************************
+        [error]   File "E:\PythonProject-NNAntenna\python-hfss.py", line 351, in <module>
+        [error]     main()
+        [error]   File "E:\PythonProject-NNAntenna\python-hfss.py", line 339, in main
+        [error]     success = simulator.run_full_hfss_simulation()
+        [error]   File "E:\PythonProject-NNAntenna\python-hfss.py", line 64, in run_full_hfss_simulation
+        [error]     if not self.post_processing():
+        [error]   File "E:\PythonProject-NNAntenna\python-hfss.py", line 304, in post_processing
+        [error]     elevation_ffd_plot = self.hfss.post.create_report(expressions="db(GainTheta)",
+        [error] 'bool' object has no attribute 'report_type' on create_report
+        [error] Last Electronics Desktop Message - [error] 'bool' object has no attribute 'report_type' on create_report  
+        [error] Method arguments: 
+        [error]     expressions = db(GainTheta) 
+        [error]     setup_sweep_name = DiscreteSweep 
+        [error]     variations = {'layer_1_position': '0mm', 'dielectric_thickness': '0.5mm', 'Patch_frequency': '10Hz', 'Patch_width': '9.25mm', 'Patch_position_x': '0mm', 'Patch_position_y': '0mm', 'probe_y_rel': '0', 'ground_thickness': '0.035mm', 'Patch_length':
+        [error]  '9.57mm', 'probe_x_rel': '0.485', 'signal_thickness': '0.035mm', '$cloned_copper_permittivity': '1', '$cloned_copper_conductivity': '58000000', '$cloned_copper_dielectric_loss_tangent': '0', '$cloned_copper_magnetic_loss_tangent': '0', '$cloned_air_
+        [error] permeability': '1.0000004', '$cloned_air_conductivity': '0', '$cloned_air_dielectric_loss_tangent': '0', '$cloned_air_magnetic_loss_tangent': '0', '$cloned_Duroid_tm_permeability': '1', '$cloned_Duroid_tm_conductivity': '0', '$cloned_Duroid_tm_magnet
+        [error] ic_loss_tangent': '0', '$cloned_air_permittivity': '1.0006', '$cloned_copper_permeability': '0.999991', '$cloned_Duroid_tm_dielectric_loss_tangent': '0.0009', '$cloned_Duroid_tm_permittivity': '2.2', 'Freq': ['10GHz'], 'Theta': ['All'], 'Phi': ['All'
+        [error] ]} 
+        [error]     primary_sweep_variable = Theta 
+        [error]     report_category = Far Fields 
+        [error]     plot_type = Radiation Pattern 
+        [error]     context = Elevation 
+        [error]     plot_name = Elevation Gain (dB) 
+        [error] **************************************************************
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 9:14:50 AM  Oct 30, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 9:30:39 AM  Oct 30, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 60664. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__OT2KX7 has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmp_ujlm3ho.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmp_ujlm3ho.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.04869532585144043
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 50.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmp_ujlm3ho.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmp_ujlm3ho.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.041478633880615234
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Far field sphere Infinite Sphere1 is created.
+        [info] Solution Data Correctly Loaded.
+        [info] Exporting antenna metadata...
+        [info] Antenna metadata exported.
+        [info] Exporting geometry...
+        [info] Exporting embedded element patterns.... Done: 1.1668548583984375 seconds
+        [warning] Property Show Solution Name is read-only.
+        [error] **************************************************************
+        [error]   File "E:\PythonProject-NNAntenna\python-hfss.py", line 351, in <module>
+        [error]     main()
+        [error]   File "E:\PythonProject-NNAntenna\python-hfss.py", line 339, in main
+        [error]     success = simulator.run_full_hfss_simulation()
+        [error]   File "E:\PythonProject-NNAntenna\python-hfss.py", line 65, in run_full_hfss_simulation
+        [error]     if not self.post_processing():
+        [error]   File "E:\PythonProject-NNAntenna\python-hfss.py", line 315, in post_processing
+        [error]     ff_el_data = elevation_ffd_plot.get_solution_data()
+        [error] AEDT API Error on _initialize_tree_node
+        [error] Last Electronics Desktop Message - [error] script macro error: elevation gain (db) is not a child name of results. (09:33:11 am  oct 30, 2025)  
+        [error] **************************************************************
+        [error] **************************************************************
+        [error]   File "E:\PythonProject-NNAntenna\python-hfss.py", line 351, in <module>
+        [error]     main()
+        [error]   File "E:\PythonProject-NNAntenna\python-hfss.py", line 339, in main
+        [error]     success = simulator.run_full_hfss_simulation()
+        [error]   File "E:\PythonProject-NNAntenna\python-hfss.py", line 65, in run_full_hfss_simulation
+        [error]     if not self.post_processing():
+        [error]   File "E:\PythonProject-NNAntenna\python-hfss.py", line 315, in post_processing
+        [error]     ff_el_data = elevation_ffd_plot.get_solution_data()
+        [error] 'nonetype' object has no attribute 'split' on get_solution_data
+        [error] Last Electronics Desktop Message - [error] script macro error: elevation gain (db) is not a child name of results. (09:33:11 am  oct 30, 2025)  
+        [error] **************************************************************
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 9:33:20 AM  Oct 30, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 9:51:27 AM  Oct 30, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 64437. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__DN17T0 has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpqjxskwsf.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpqjxskwsf.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.046630859375
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 48.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpqjxskwsf.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpqjxskwsf.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.03657269477844238
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Far field sphere Infinite Sphere1 is created.
+        [info] Solution Data Correctly Loaded.
+        [info] Exporting antenna metadata...
+        [info] Antenna metadata exported.
+        [info] Exporting geometry...
+        [info] Exporting embedded element patterns.... Done: 1.1177659034729004 seconds
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 9:53:28 AM  Oct 30, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 9:53:52 AM  Oct 30, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 56700. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__884PWU has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpvn59gp3h.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpvn59gp3h.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.04559946060180664
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 48.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpvn59gp3h.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpvn59gp3h.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.038956642150878906
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Far field sphere Infinite Sphere1 is created.
+        [info] Solution Data Correctly Loaded.
+        [info] Exporting antenna metadata...
+        [info] Antenna metadata exported.
+        [info] Exporting geometry...
+        [info] Exporting embedded element patterns.... Done: 1.1418147087097168 seconds
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 9:56:32 AM  Oct 30, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 9:57:32 AM  Oct 30, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 52543. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__ITGYQJ has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmp0jlkohe6.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmp0jlkohe6.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.04511141777038574
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 49.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmp0jlkohe6.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmp0jlkohe6.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.03757476806640625
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Far field sphere Infinite Sphere1 is created.
+        [info] Solution Data Correctly Loaded.
+        [info] Exporting antenna metadata...
+        [info] Antenna metadata exported.
+        [info] Exporting geometry...
+        [info] Exporting embedded element patterns.... Done: 1.125054121017456 seconds
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 9:59:28 AM  Oct 30, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 10:00:04 AM  Oct 30, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 58517. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__M9P220 has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmp2iwd41ki.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmp2iwd41ki.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.055756568908691406
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 50.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmp2iwd41ki.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmp2iwd41ki.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.036128997802734375
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Far field sphere Infinite Sphere1 is created.
+        [info] Solution Data Correctly Loaded.
+        [info] Exporting antenna metadata...
+        [info] Antenna metadata exported.
+        [info] Exporting geometry...
+        [info] Exporting embedded element patterns.... Done: 1.1447901725769043 seconds
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 10:01:35 AM  Oct 30, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 10:24:32 AM  Oct 30, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 49182. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__6KUXAI has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpj56iswja.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpj56iswja.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.05153799057006836
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 50.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpj56iswja.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpj56iswja.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.03536486625671387
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Far field sphere Infinite Sphere1 is created.
+        [info] Solution Data Correctly Loaded.
+        [info] Exporting antenna metadata...
+        [info] Antenna metadata exported.
+        [info] Exporting geometry...
+        [info] Exporting embedded element patterns.... Done: 1.2130796909332275 seconds
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 10:28:04 AM  Oct 30, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 10:32:22 AM  Oct 30, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 62130. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__WFVFWP has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpjuwhlyj9.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpjuwhlyj9.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.05140876770019531
+        [info] Linear count sweep Sweep1 has been correctly created
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 0.0m 50.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpjuwhlyj9.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpjuwhlyj9.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.037451744079589844
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [info] Solution Data Correctly Loaded.
+        [info] Far field sphere Infinite Sphere1 is created.
+        [info] Solution Data Correctly Loaded.
+        [info] Exporting antenna metadata...
+        [info] Antenna metadata exported.
+        [info] Exporting geometry...
+        [info] Exporting embedded element patterns.... Done: 1.2665488719940186 seconds
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 10:33:54 AM  Oct 30, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 10:40:50 AM  Oct 30, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 10:41:29 AM  Oct 30, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 64042. 
+        [info] Project dipole has been created.
+        [info] No design is present. Inserting a new design.
+        [info] Added design 'HFSS_6MM' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpbanec5cg.ansys\dipole.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpbanec5cg.ansys\dipole.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.015097618103027344
+        [info] Open Region correctly created.
+        [info] Project dipole Saved correctly
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpbanec5cg.ansys\dipole.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpbanec5cg.ansys\dipole.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.04529714584350586
+        [info] Project dipole Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving design setup MySetup
+        [info] Design setup MySetup solved correctly in 0.0h 0.0m 36.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpbanec5cg.ansys\dipole.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpbanec5cg.ansys\dipole.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.03339099884033203
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [warning] More than one sweep with name 'DiscreteSweep' found. Returning 'MySetup : DiscreteSweep'.
+        [info] Solution Data Correctly Loaded.
+        [warning] More than one sweep with name 'DiscreteSweep' found. Returning 'MySetup : DiscreteSweep'.
+        [info] Solution Data Correctly Loaded.
+        [info] Project dipole Saved correctly
+-- Message Window --
+Stopping Batch Run: 10:42:30 AM  Oct 30, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 10:54:30 AM  Oct 30, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 57443. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__0ITBX0 has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpkn_l0zkr.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpkn_l0zkr.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.05027413368225098
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 9.0m 19.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmpkn_l0zkr.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmpkn_l0zkr.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.046660423278808594
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [warning] Property Show Trace Name is read-only.
+        [warning] Property Show Solution Name is read-only.
+        [warning] More than one sweep with name 'DiscreteSweep' found. Returning 'Setup1 : DiscreteSweep'.
+        [warning] Property `far_field_sphere` not found.
+        [warning] Solution Data failed to load. Check solution, context or expression.
+        [warning] No Data Available. Check inputs
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 11:06:17 AM  Oct 30, 2025
+ 
+Ansys Electronics Desktop Version 2025.1.0, Build: 2024-11-30 15:03:33
+Location: D:\HFSS\ANSYS Inc\v251\AnsysEM\ansysedt.exe
+Non Graphical Mode: No Project??
+Starting Batch Run: 11:12:40 AM  Oct 30, 2025
+Running as user : WIN-LV09H8UCHUF\Administrator
+Temp directory: C:\Users\Administrator\AppData\Local\Temp
+Project directory: C:\Users\Administrator\Documents\Ansoft
+-- Message Window --
+      *Global - Messages
+        [info] GRPC server running on port: 64676. 
+        [info] Project patch has been created.
+        [info] Added design 'patch' of type HFSS.
+        [info] Aedt Objects correctly read
+        [info] Modeler class has been initialized! Elapsed time: 0m 0sec
+        [info] Materials class has been initialized! Elapsed time: 0m 0sec
+        [warning] The closer the ratio between wave length and the width is to 1, the less correct the impedance calculation is
+        [info] Boundary Radiation Rad__2VR9JH has been created.
+        [info] Boundary Perfect E Probe_PEC has been created.
+        [info] Boundary AutoIdentify Probe_Port has been created.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmp535fdyvj.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmp535fdyvj.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.05010199546813965
+        [info] Project patch Saved correctly
+        [info] Project patch Saved correctly
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Solving all design setups. Analysis started...
+        [info] Design setup None solved correctly in 0.0h 10.0m 8.0s
+        [info] Key Desktop/ActiveDSOConfigurations/HFSS correctly changed.
+        [info] Parsing C:\Users\Administrator\AppData\Local\Temp\tmp535fdyvj.ansys\patch.aedt.
+        [info] File C:\Users\Administrator\AppData\Local\Temp\tmp535fdyvj.ansys\patch.aedt correctly loaded. Elapsed time: 0m 0sec
+        [info] aedt file load time 0.04439210891723633
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] PostProcessor class has been initialized! Elapsed time: 0m 0sec
+        [info] Post class has been initialized! Elapsed time: 0m 0sec
+        [warning] Property Show Solution Name is read-only.
+        [warning] More than one sweep with name 'DiscreteSweep' found. Returning 'Setup1 : DiscreteSweep'.
+        [warning] Property `far_field_sphere` not found.
+        [warning] Solution Data failed to load. Check solution, context or expression.
+        [warning] No Data Available. Check inputs
+        [info] Project patch Saved correctly
+-- Message Window --
+Stopping Batch Run: 11:26:37 AM  Oct 30, 2025

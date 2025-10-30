@@ -2,8 +2,10 @@ import os
 import tempfile
 import time
 
+import numpy as np
 import ansys.aedt.core
 import pyvista as pv
+pv.set_jupyter_backend("trame")
 from ansys.aedt.core.modeler.advanced_cad.stackup_3d import Stackup3D
 from ansys.aedt.core.visualization.advanced.farfield_visualization import FfdSolutionData
 from django.contrib.messages import success
@@ -31,7 +33,7 @@ class AdvancedHFSSEntennaSimulator:
             "patch_length": 9.57, # 贴片长度(mm)
             "patch_width": 9.25, #
             "patch_name": "Patch",
-            "freq_step" : "0.5GHz",
+            "freq_step" : "2GHz",
         }
         self.disc_sweep = None
         self.interp_sweep = None
@@ -166,28 +168,28 @@ class AdvancedHFSSEntennaSimulator:
         #频率扫描用于指定将计算散射参数的范围。
         setup = self.hfss.create_setup(name="Setup1", setup_type="HFSSDriven", Frequency="10GHz")
 
-        setup.create_frequency_sweep(
-            # unit="GHz",
-            # name="Sweep1",
-            # start_frequency=8,
-            # stop_frequency=12,
-            # sweep_type="Interpolating",
-            unit=self.antenna_params["unit"],
-            name="Sweep1",
-            start_frequency=self.antenna_params["start_frequency"],
-            stop_frequency=self.antenna_params["stop_frequency"],
-            sweep_type=self.antenna_params["sweep_type"],
-        )
-        # disc_sweep = setup.add_sweep(name="DiscreteSweep", sweep_type="Discrete",
-        #                              RangeStart=self.antenna_params["start_frequency"],
-        #                              RangeEnd=self.antenna_params["stop_frequency"],
-        #                              RangeStep=self.antenna_params["freq_step"],
-        #                              SaveFields=True)
+        # setup.create_frequency_sweep(
+        #     # unit="GHz",
+        #     # name="Sweep1",
+        #     # start_frequency=8,
+        #     # stop_frequency=12,
+        #     # sweep_type="Interpolating",
+        #     unit=self.antenna_params["unit"],
+        #     name="Sweep1",
+        #     start_frequency=self.antenna_params["start_frequency"],
+        #     stop_frequency=self.antenna_params["stop_frequency"],
+        #     sweep_type=self.antenna_params["sweep_type"],
+        # )
+        self.disc_sweep = setup.add_sweep(name="DiscreteSweep", sweep_type="Discrete",
+                                     RangeStart=self.antenna_params["start_frequency"],
+                                     RangeEnd=self.antenna_params["stop_frequency"],
+                                     RangeStep=self.antenna_params["freq_step"],
+                                     SaveFields=True)
 
-        # interp_sweep = setup.add_sweep(name="InterpolatingSweep", sweep_type="Interpolating",
-        #                                RangeStart=self.antenna_params["start_frequency"],
-        #                                RangeEnd=self.antenna_params["stop_frequency"],
-        #                                SaveFields=False)
+        self.interp_sweep = setup.add_sweep(name="InterpolatingSweep", sweep_type="Interpolating",
+                                       RangeStart=self.antenna_params["start_frequency"],
+                                       RangeEnd=self.antenna_params["stop_frequency"],
+                                       SaveFields=False)
         print("保存工程")
         self.hfss.save_project()  # Save the project.
         print("=" * 80)
@@ -219,87 +221,77 @@ class AdvancedHFSSEntennaSimulator:
         return True
 
     def post_processing(self):
-        print("=" * 80)
-        print("后处理")
-        #后处理
-        print("S参数")
-        plot_data = self.hfss.get_traces_for_plot()
-        print(f"polt_data {plot_data}")
-        report = self.hfss.post.create_report(plot_data)
-        solution = report.get_solution_data()
-        plt = solution.plot(solution.expressions)
-        plt.show()
-        print("=" * 80)
+        try:
+            choice = input("请输入数字1-2")
+            num = int(choice)
 
-        input("请按回车键继续1...")
-        print("远区场辐射图")
+            if num == 1:
+                input("请按回车键继续...")
+                self.extract_s_parameters()
+                return True
+            elif num == 2:
+                print("=" * 80)
+                print("后处理")
+                #后处理
+                print("S参数")
+                plot_data = self.hfss.get_traces_for_plot()
+                print(f"polt_data {plot_data}")
+                report = self.hfss.post.create_report(plot_data)
+                solution = report.get_solution_data()
+                plt = solution.plot(solution.expressions)
+                plt.show()
+                print("=" * 80)
 
-        # variations = self.hfss.available_variations.nominal_values
-        # variations["Theta"] = ["All"]
-        # variations["Phi"] = ["All"]
-        # variations["Freq"] = ["10GHz"]
-        # elevation_ffd_plot = self.hfss.post.create_report(
-        #                     expressions = "db(GainTotal)",
-        #                     setup_sweep_name = self.hfss.nominal_adaptive,
-        #                     variations = variations,
-        #                     primary_sweep_variable = "Theta",
-        #                     context="Elevation",# Far-field setup is pre-defined.
-        #                     report_category = "Far Fields",
-        #                     plot_type = "Radiation Pattern",
-        #                     plot_name="Elevation Gain (dB)"
-        #                     )
-        # elevation_ffd_plot.children["Legend"].properties["Show Trace Name"] = False
-        # elevation_ffd_plot.children["Legend"].properties["Show Solution Name"] = False
-        #
-        # report_3d = self.hfss.post.reports_by_category.far_field("db(RealizedGainTheta)", "Setup : LastAdaptive", "3D_Sphere")
-        #
-        # report_3d.report_type = "3D Polar Plot"
-        # report_3d.create(name="Realized Gain (dB)")
-        #
-        # report_3d_data = report_3d.get_solution_data()
-        # new_plot = report_3d_data.plot_3d()
-        # new_plot.show()
+                input("请按回车键继续1...")
+                print("远区场辐射图")
 
+                print("=" * 80)
+                ffdata = self.hfss.get_antenna_data(
+                    setup=self.hfss.nominal_adaptive,
+                    sphere="Infinite Sphere1",
+                    link_to_hfss = True)
+                input("请按回车键继续11...")
+                ffdata.farfield_data.plot_cut(primary_sweep="theta", theta=0)
+                input("请按回车键继续11...")
+                ffdata.farfield_data.plot_cut(
+                    quantity="RealizedGain",
+                    primary_sweep="phi",
+                    title="Elevation",
+                    quantity_format="dB10",
+                )
+                input("请按回车键继续2...")
 
-        print("=" * 80)
-        ffdata = self.hfss.get_antenna_data(
-            setup=self.hfss.nominal_adaptive,
-            sphere="Infinite Sphere1",
-            link_to_hfss = True)
-        input("请按回车键继续11...")
-        ffdata.farfield_data.plot_cut(primary_sweep="theta", theta=0)
-        ffdata.farfield_data.plot_cut(
-            quantity="RealizedGain",
-            primary_sweep="phi",
-            title="Elevation",
-            quantity_format="dB10",
-        )
-        input("请按回车键继续2...")
+                # 步骤1：定义外部 PyVista 实例
+                # 创建一个 PyVista 渲染器（renderer）或 plotting 对象
+                external_pv = pv.Plotter()  # 最常用的实例类型，用于创建可视化场景
+                # （可选）给实例添加额外元素（如网格、坐标轴等，不影响传入，仅丰富场景）
+                external_pv.add_axes()  # 添加坐标轴
+                external_pv.set_background('white')  # 设置背景色
 
-        # 步骤1：定义外部 PyVista 实例
-        # 创建一个 PyVista 渲染器（renderer）或 plotting 对象
-        external_pv = pv.Plotter()  # 最常用的实例类型，用于创建可视化场景
-        # （可选）给实例添加额外元素（如网格、坐标轴等，不影响传入，仅丰富场景）
-        external_pv.add_axes()  # 添加坐标轴
-        external_pv.set_background('white')  # 设置背景色
+                ffdata.farfield_data.plot_3d(
+                    quantity="RealizedGain",
+                    quantity_format="dB10",
+                    show=False,
+                    # output_file="./antenna_3d.png",
+                    show_as_standalone=True,
+                    pyvista_object=external_pv,
+                )
+                # img_data = external_pv.screenshot(return_img=True)
+                # plt.imshow(img_data)
+                # plt.show()
+                input("请按回车键继续6...")
+                # external_pv.show()
+                print("=" * 80)
+                return True
+            else:
+                print("=" * 80)
+                print("输入错误！请输入1-2之间的数字")
+                return False
+        except ValueError:
+            print("输入错误！请输入有效的数字")
 
-        ffdata.farfield_data.plot_3d(
-            quantity="RealizedGain",
-            quantity_format="dB10",
-            show=False,
-            # show_as_standalone=True,
-            pyvista_object=external_pv,
-        )
-        # img_data = external_pv.screenshot(return_img=True)
-        # plt.imshow(img_data)
-        # plt.show()
-        external_pv.show()
-        input("请按回车键继续4...")
-
-        print("=" * 80)
-
-        return True
-
+    def extract_s_parameters(self):
+        spar_plot = self.hfss.create_scattering()
 
 
 def main():
