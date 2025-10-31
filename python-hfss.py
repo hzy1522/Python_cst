@@ -1,3 +1,4 @@
+import csv
 import os
 import tempfile
 import time
@@ -5,6 +6,7 @@ import time
 import numpy as np
 import ansys.aedt.core
 import pyvista as pv
+from pyvista import examples
 pv.set_jupyter_backend("trame")
 from ansys.aedt.core.modeler.advanced_cad.stackup_3d import Stackup3D
 from ansys.aedt.core.visualization.advanced.farfield_visualization import FfdSolutionData
@@ -27,13 +29,14 @@ class AdvancedHFSSEntennaSimulator:
             "start_frequency": 8,  # 起始工作频率 (GHz)
             "stop_frequency": 12,  #截止频率
             "center_frequency": 10,  #中心频率
-            "sweep_type": "Interpolating", #扫描频率设置
+            "sweep_type": "Fast", #扫描频率设置
             "ground_thickness": 0.035,  # 地板厚度 (mm)
             "signal_layer_thickness": 0.035, #信号线厚度(mm)
             "patch_length": 9.57, # 贴片长度(mm)
             "patch_width": 9.25, #
             "patch_name": "Patch",
             "freq_step" : "2GHz",
+            "num_of_freq_points": 101,
         }
         self.disc_sweep = None
         self.interp_sweep = None
@@ -94,7 +97,7 @@ class AdvancedHFSSEntennaSimulator:
         print("=" * 80)
         print("启动HFSS")
 
-        self.hfss = ansys.aedt.core.Hfss(
+        self.aedtapp = self.hfss = ansys.aedt.core.Hfss(
             project=self.project_name,
             solution_type="Terminal",
             design="patch",
@@ -168,28 +171,31 @@ class AdvancedHFSSEntennaSimulator:
         #频率扫描用于指定将计算散射参数的范围。
         setup = self.hfss.create_setup(name="Setup1", setup_type="HFSSDriven", Frequency="10GHz")
 
-        # setup.create_frequency_sweep(
-        #     # unit="GHz",
-        #     # name="Sweep1",
-        #     # start_frequency=8,
-        #     # stop_frequency=12,
-        #     # sweep_type="Interpolating",
-        #     unit=self.antenna_params["unit"],
-        #     name="Sweep1",
-        #     start_frequency=self.antenna_params["start_frequency"],
-        #     stop_frequency=self.antenna_params["stop_frequency"],
-        #     sweep_type=self.antenna_params["sweep_type"],
-        # )
-        self.disc_sweep = setup.add_sweep(name="DiscreteSweep", sweep_type="Discrete",
-                                     RangeStart=self.antenna_params["start_frequency"],
-                                     RangeEnd=self.antenna_params["stop_frequency"],
-                                     RangeStep=self.antenna_params["freq_step"],
-                                     SaveFields=True)
+        setup.create_frequency_sweep(
+            # unit="GHz",
+            # name="Sweep1",
+            # start_frequency=8,
+            # stop_frequency=12,
+            # sweep_type="Interpolating",
+            unit=self.antenna_params["unit"],
+            name="Sweep1",
+            start_frequency=self.antenna_params["start_frequency"],
+            stop_frequency=self.antenna_params["stop_frequency"],
+            sweep_type=self.antenna_params["sweep_type"],
+            num_of_freq_points=self.antenna_params["num_of_freq_points"],
+            save_fields=True,
+        )
 
-        self.interp_sweep = setup.add_sweep(name="InterpolatingSweep", sweep_type="Interpolating",
-                                       RangeStart=self.antenna_params["start_frequency"],
-                                       RangeEnd=self.antenna_params["stop_frequency"],
-                                       SaveFields=False)
+        # self.disc_sweep = setup.add_sweep(name="DiscreteSweep", sweep_type="Discrete",
+        #                              RangeStart=self.antenna_params["start_frequency"],
+        #                              RangeEnd=self.antenna_params["stop_frequency"],
+        #                              RangeStep=self.antenna_params["freq_step"],
+        #                              SaveFields=True)
+        #
+        # self.interp_sweep = setup.add_sweep(name="InterpolatingSweep", sweep_type="Interpolating",
+        #                                RangeStart=self.antenna_params["start_frequency"],
+        #                                RangeEnd=self.antenna_params["stop_frequency"],
+        #                                SaveFields=False)
         print("保存工程")
         self.hfss.save_project()  # Save the project.
         print("=" * 80)
@@ -233,6 +239,7 @@ class AdvancedHFSSEntennaSimulator:
                 print("=" * 80)
                 print("后处理")
                 #后处理
+#--------------------------------------------------S参数-------------------------------------------------
                 print("S参数")
                 plot_data = self.hfss.get_traces_for_plot()
                 print(f"polt_data {plot_data}")
@@ -244,43 +251,58 @@ class AdvancedHFSSEntennaSimulator:
 
                 input("请按回车键继续1...")
                 print("远区场辐射图")
-
+# --------------------------------------------------远区场辐射图-------------------------------------------------
                 print("=" * 80)
                 ffdata = self.hfss.get_antenna_data(
                     setup=self.hfss.nominal_adaptive,
-                    sphere="Infinite Sphere1",
+                    # sphere="Infinite Sphere1",
                     link_to_hfss = True)
+                print("对象类型：", type(ffdata))
                 input("请按回车键继续11...")
-                ffdata.farfield_data.plot_cut(primary_sweep="theta", theta=0)
-                input("请按回车键继续11...")
-                ffdata.farfield_data.plot_cut(
-                    quantity="RealizedGain",
-                    primary_sweep="phi",
-                    title="Elevation",
-                    quantity_format="dB10",
-                )
-                input("请按回车键继续2...")
+                metadata_file = ffdata.metadata_file
+                farfield_data = FfdSolutionData(input_file=metadata_file)
+                farfield_data.plot_3d(quantity_format="dB10",
+                                      output_file='./3D.png',
+                                      show=False,
+                                      )
+                print("对象类型：", type(ffdata.farfield_data))
+                data = ffdata.farfield_data.combine_farfield(phi_scan=0.0, theta_scan=0.0)
+                print(data)
+                self.save_farfield_data_to_csv(data)
 
-                # 步骤1：定义外部 PyVista 实例
-                # 创建一个 PyVista 渲染器（renderer）或 plotting 对象
-                external_pv = pv.Plotter()  # 最常用的实例类型，用于创建可视化场景
-                # （可选）给实例添加额外元素（如网格、坐标轴等，不影响传入，仅丰富场景）
-                external_pv.add_axes()  # 添加坐标轴
-                external_pv.set_background('white')  # 设置背景色
-
-                ffdata.farfield_data.plot_3d(
-                    quantity="RealizedGain",
-                    quantity_format="dB10",
-                    show=False,
-                    # output_file="./antenna_3d.png",
-                    show_as_standalone=True,
-                    pyvista_object=external_pv,
-                )
+                # input("请按回车键继续2...")
+                # # 步骤1：定义外部 PyVista 实例
+                # # 创建一个 PyVista 渲染器（renderer）或 plotting 对象
+                # external_pv = pv.Plotter()  # 最常用的实例类型，用于创建可视化场景
+                # # （可选）给实例添加额外元素（如网格、坐标轴等，不影响传入，仅丰富场景）
+                # external_pv.add_axes()  # 添加坐标轴
+                # external_pv.set_background('white')  # 设置背景色
+                #
+                # ffdata.farfield_data.plot_3d(
+                #     quantity="RealizedGain",
+                #     quantity_format="dB10",
+                #     show=False,
+                #     # output_file="./antenna_3d.png",
+                #     show_as_standalone=True,
+                #     pyvista_object=external_pv,
+                # )
+                # external_pv.show()
                 # img_data = external_pv.screenshot(return_img=True)
                 # plt.imshow(img_data)
                 # plt.show()
+                # input("请按回车键继续111111...")
+                # ffdata.farfield_data.plot_cut(
+                #     quantity="RealizedGain",
+                #     primary_sweep="theta",
+                #     title="Elevation",
+                #     quantity_format="dB10",
+                # )
                 input("请按回车键继续6...")
-                # external_pv.show()
+                exported_files = self.aedtapp.export_results(export_folder='./RESULT')
+                # import pandas as pd
+                # df = pd.DataFrame.from_records(exported_files)
+                # df.to_csv("./RESULT/hfss.csv", index=False,encoding='utf-8')
+                input("请按回车键继续1100...")
                 print("=" * 80)
                 return True
             else:
@@ -289,7 +311,60 @@ class AdvancedHFSSEntennaSimulator:
                 return False
         except ValueError:
             print("输入错误！请输入有效的数字")
+    def save_farfield_data_to_csv(self, data):
+        # 你的原始字典数据（此处省略，替换为你的实际字典变量名即可）
+        # data = 你的字典变量
 
+        # 1. 提取核心角度数组（Theta和Phi）
+        theta_list = data["Theta"]  # 长度37的1D数组
+        phi_list = data["Phi"]  # 长度73的1D数组
+        n_theta = len(theta_list)
+        n_phi = len(phi_list)
+
+        # 2. 定义CSV表头（角度列 + 所有物理量列，复数拆分为“实部/虚部”）
+        header = ["Theta(deg)", "Phi(deg)"]  # 角度坐标列
+
+        # 遍历字典，为每个物理量生成表头（复数拆分为实部、虚部，实数直接用原键名）
+        for key in data.keys():
+            # 跳过非数据类键（Theta/Phi是坐标，nTheta/nPhi是长度，无需重复）
+            if key in ["Theta", "Phi", "nTheta", "nPhi"]:
+                continue
+            # 判断该键对应的数据是否为复数类型
+            is_complex = np.iscomplexobj(data[key])
+            if is_complex:
+                header.append(f"{key}_Real")  # 复数实部列
+                header.append(f"{key}_Imag")  # 复数虚部列
+            else:
+                header.append(key)  # 实数直接用原键名
+
+        # 3. 生成CSV行数据（遍历所有Theta-Ph Phi组合）
+        csv_rows = []
+        for i in range(n_theta):
+            for j in range(n_phi):
+                row = []
+                # 先添加当前角度坐标（Theta和Phi）
+                row.append(theta_list[i])
+                row.append(phi_list[j])
+                # 再添加该角度下所有物理量的值
+                for key in data.keys():
+                    if key in ["Theta", "Phi", "nTheta", "nPhi"]:
+                        continue
+                    val = data[key][i, j]  # 提取二维数组中(i,j)位置的值
+                    # 复数拆分为实部和虚部，实数直接添加
+                    if np.iscomplexobj(val):
+                        row.append(val.real)
+                        row.append(val.imag)
+                    else:
+                        row.append(val)
+                csv_rows.append(row)
+
+        # 4. 保存到CSV文件
+        with open("./farfield_data_zidian.csv", "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(header)  # 写入表头
+            writer.writerows(csv_rows)  # 写入所有数据行
+
+        print(f"CSV文件已保存！共 {len(csv_rows)} 行数据，{len(header)} 列参数。")
     def extract_s_parameters(self):
         spar_plot = self.hfss.create_scattering()
 
