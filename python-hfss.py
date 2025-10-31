@@ -6,6 +6,7 @@ import time
 import numpy as np
 import ansys.aedt.core
 import pyvista as pv
+import pandas as pd
 from pyvista import examples
 pv.set_jupyter_backend("trame")
 from ansys.aedt.core.modeler.advanced_cad.stackup_3d import Stackup3D
@@ -266,9 +267,17 @@ class AdvancedHFSSEntennaSimulator:
                                       show=False,
                                       )
                 print("对象类型：", type(ffdata.farfield_data))
+
                 data = ffdata.farfield_data.combine_farfield(phi_scan=0.0, theta_scan=0.0)
-                print(data)
+                # print(data)
+                print("=" * 80)
                 self.save_farfield_data_to_csv(data)
+
+                # 替换为你的CSV文件路径
+                csv_file_path = "farfield_data_zidian.csv"
+                output_file_path = "data_dict_pandas.json"
+                self.data_dict = self.readcsv_to_dict(csv_file_path)
+                self.save_to_jsonfile(self.data_dict, output_file_path)
 
                 # input("请按回车键继续2...")
                 # # 步骤1：定义外部 PyVista 实例
@@ -302,6 +311,7 @@ class AdvancedHFSSEntennaSimulator:
                 # import pandas as pd
                 # df = pd.DataFrame.from_records(exported_files)
                 # df.to_csv("./RESULT/hfss.csv", index=False,encoding='utf-8')
+
                 input("请按回车键继续1100...")
                 print("=" * 80)
                 return True
@@ -365,6 +375,31 @@ class AdvancedHFSSEntennaSimulator:
             writer.writerows(csv_rows)  # 写入所有数据行
 
         print(f"CSV文件已保存！共 {len(csv_rows)} 行数据，{len(header)} 列参数。")
+
+    def readcsv_to_dict(self, csv_file_path):
+        # 读取CSV，仅取前2行（表头+第二行数据）
+        df = pd.read_csv(csv_file_path, nrows=1)  # nrows=1 表示仅读取1行数据（第二行）
+        # 转换为字典（orient="records" 按行转换，取第一个元素即为目标字典）
+        data_dict = df.to_dict(orient="records")[0]
+        return data_dict
+
+    def save_to_jsonfile(self, data_dict, output_file_path):
+        # 保存字典到文件
+        import json
+        # 追加字典到文件末尾（每行一个JSON）
+        with open(output_file_path, "a", encoding="utf-8") as f:
+            # 字典转为JSON字符串，添加换行符（确保每行一个字典）
+            json.dump(data_dict, f, ensure_ascii=False)
+            f.write("\n")  # 换行，便于下次追加和读取
+
+        print(f"字典已追加到 {output_file_path} 文件末尾")
+
+        # 验证结果（可选）
+        print("\n文件当前内容：")
+        with open(output_file_path, "r", encoding="utf-8") as f:
+            print(f.read())
+
+        return data_dict
     def extract_s_parameters(self):
         spar_plot = self.hfss.create_scattering()
 
