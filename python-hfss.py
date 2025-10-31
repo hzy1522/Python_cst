@@ -1,4 +1,5 @@
 import csv
+import glob
 import os
 import tempfile
 import time
@@ -7,6 +8,9 @@ import numpy as np
 import ansys.aedt.core
 import pyvista as pv
 import pandas as pd
+import json
+import re
+
 from pyvista import examples
 pv.set_jupyter_backend("trame")
 from ansys.aedt.core.modeler.advanced_cad.stackup_3d import Stackup3D
@@ -14,6 +18,9 @@ from ansys.aedt.core.visualization.advanced.farfield_visualization import FfdSol
 from django.contrib.messages import success
 from ansys.aedt.core import Hfss
 import matplotlib.pyplot as plt
+
+from typing import List, Dict, Union, Optional
+
 
 class AdvancedHFSSEntennaSimulator:
 
@@ -228,99 +235,133 @@ class AdvancedHFSSEntennaSimulator:
         return True
 
     def post_processing(self):
-        try:
-            choice = input("请输入数字1-2")
-            num = int(choice)
-
-            if num == 1:
-                input("请按回车键继续...")
-                self.extract_s_parameters()
-                return True
-            elif num == 2:
-                print("=" * 80)
-                print("后处理")
-                #后处理
+        print("=" * 80)
+        print("后处理")
+        #后处理
 #--------------------------------------------------S参数-------------------------------------------------
-                print("S参数")
-                plot_data = self.hfss.get_traces_for_plot()
-                print(f"polt_data {plot_data}")
-                report = self.hfss.post.create_report(plot_data)
-                solution = report.get_solution_data()
-                plt = solution.plot(solution.expressions)
-                plt.show()
-                print("=" * 80)
+        print("S参数")
+        plot_data = self.hfss.get_traces_for_plot()
+        print(f"polt_data {plot_data}")
+        report = self.hfss.post.create_report(plot_data)
+        solution = report.get_solution_data()
+        plt = solution.plot(solution.expressions)
+        plt.show()
+        print("=" * 80)
 
-                input("请按回车键继续1...")
-                print("远区场辐射图")
+        input("请按回车键继续1...")
+        print("远区场辐射图")
 # --------------------------------------------------远区场辐射图-------------------------------------------------
-                print("=" * 80)
-                ffdata = self.hfss.get_antenna_data(
-                    setup=self.hfss.nominal_adaptive,
-                    # sphere="Infinite Sphere1",
-                    link_to_hfss = True)
-                print("对象类型：", type(ffdata))
-                input("请按回车键继续11...")
-                metadata_file = ffdata.metadata_file
-                farfield_data = FfdSolutionData(input_file=metadata_file)
-                farfield_data.plot_3d(quantity_format="dB10",
-                                      output_file='./3D.png',
-                                      show=False,
-                                      )
-                print("对象类型：", type(ffdata.farfield_data))
+        print("=" * 80)
+        ffdata = self.hfss.get_antenna_data(
+            setup=self.hfss.nominal_adaptive,
+            # sphere="Infinite Sphere1",
+            link_to_hfss = True)
+        # print("对象类型：", type(ffdata))
+        input("请按回车键继续11...")
+        metadata_file = ffdata.metadata_file
+        farfield_data = FfdSolutionData(input_file=metadata_file)
+        farfield_data.plot_3d(quantity_format="dB10",
+                              output_file='./3D.png',
+                              show=False,
+                              )
+        # print("对象类型：", type(ffdata.farfield_data))
+# --------------------------------------------------保存原始数据到csv-------------------------------------------------
+        data = ffdata.farfield_data.combine_farfield(phi_scan=0.0, theta_scan=0.0)
+        # print(data)
+        print("=" * 80)
+        self.save_farfield_data_to_csv(data)
 
-                data = ffdata.farfield_data.combine_farfield(phi_scan=0.0, theta_scan=0.0)
-                # print(data)
-                print("=" * 80)
-                self.save_farfield_data_to_csv(data)
+# --------------------------------------------------提取增益最大结果并保存-------------------------------------------------
+        # 替换为你的CSV文件路径
+        csv_file_path = "./farfield_data_zidian.csv"
+        output_path = "data_dict_pandas.json"
+        target_pattern = "RealizedGain"
 
-                # 替换为你的CSV文件路径
-                csv_file_path = "farfield_data_zidian.csv"
-                output_file_path = "data_dict_pandas.json"
-                self.data_dict = self.readcsv_to_dict(csv_file_path)
-                self.save_to_jsonfile(self.data_dict, output_file_path)
+        extreme_data = self.find_csv_extreme_rows(
+            csv_file_path=csv_file_path,
+            target_header_pattern=target_pattern,
+            extreme_type="max")
+        # 3. 打印结果（可选）
+        print(f"共找到 {len(extreme_data)} 个极值行：")
+        for i, row in enumerate(extreme_data, 1):
+            print(f"\n=== 第{i}个极值行 ===")
+            print(f"极值列：{row['_极值列']} | 类型：{row['_极值类型']} | 数值：{row['_极值数值']:.6f}")
+            print("核心数据（前5列）：")
+            count = 0
+            for key, value in row.items():
+                if not key.startswith("_"):
+                    print(f"  {key}: {value}")
+                    count += 1
+                    if count >= 5:
+                        break
 
-                # input("请按回车键继续2...")
-                # # 步骤1：定义外部 PyVista 实例
-                # # 创建一个 PyVista 渲染器（renderer）或 plotting 对象
-                # external_pv = pv.Plotter()  # 最常用的实例类型，用于创建可视化场景
-                # # （可选）给实例添加额外元素（如网格、坐标轴等，不影响传入，仅丰富场景）
-                # external_pv.add_axes()  # 添加坐标轴
-                # external_pv.set_background('white')  # 设置背景色
-                #
-                # ffdata.farfield_data.plot_3d(
-                #     quantity="RealizedGain",
-                #     quantity_format="dB10",
-                #     show=False,
-                #     # output_file="./antenna_3d.png",
-                #     show_as_standalone=True,
-                #     pyvista_object=external_pv,
-                # )
-                # external_pv.show()
-                # img_data = external_pv.screenshot(return_img=True)
-                # plt.imshow(img_data)
-                # plt.show()
-                # input("请按回车键继续111111...")
-                # ffdata.farfield_data.plot_cut(
-                #     quantity="RealizedGain",
-                #     primary_sweep="theta",
-                #     title="Elevation",
-                #     quantity_format="dB10",
-                # )
-                input("请按回车键继续6...")
-                exported_files = self.aedtapp.export_results(export_folder='./RESULT')
-                # import pandas as pd
-                # df = pd.DataFrame.from_records(exported_files)
-                # df.to_csv("./RESULT/hfss.csv", index=False,encoding='utf-8')
+        # 4. 保存结果
+        self.save_extreme_dicts(
+            extreme_dicts=extreme_data,
+            output_file=output_path,
+            append=True,
+            add_separator=True
+        )
 
-                input("请按回车键继续1100...")
-                print("=" * 80)
-                return True
-            else:
-                print("=" * 80)
-                print("输入错误！请输入1-2之间的数字")
-                return False
-        except ValueError:
-            print("输入错误！请输入有效的数字")
+        input("请按回车键继续6...")
+        exported_files = self.aedtapp.export_results(export_folder='./RESULT')
+        print(exported_files[0])
+        input("请按回车键继续6222...")
+
+
+        input("请按回车键继续77776...")
+# --------------------------------------------------提取S最小结果并保存-------------------------------------------------
+        csv_path = glob.glob("./RESULT/patch_patch_Plot_*.csv")
+        print(csv_path[0])
+        # min_row_data = self.find_min_in_second_column("./RESULT/patch_patch_Plot_36L36E.csv",
+        #                                               encoding="utf-8",)
+        min_row_data = self.find_min_in_second_column(csv_path[0],encoding="utf-8", )
+        # 打印结果（格式化输出，可读性强）
+        if min_row_data:
+            print("\n最小值所在行的完整数据（list[dict]格式）：")
+            print(f"数据类型：{type(min_row_data)}")  # <class 'list'>
+            print(f"列表长度：{len(min_row_data)}")  # 1
+            print(f"列表元素类型：{type(min_row_data[0])}")  # <class 'dict'>
+
+            # 格式化打印字典内容
+            print("\n详细数据：")
+            for key, value in min_row_data[0].items():
+                print(f"  {key}: {value}（类型：{type(value).__name__}）")
+
+#         # 替换为你的CSV文件路径
+#         csv_file_path_list =  glob.glob("./RESULT/patch_patch_Plot_*.csv")
+#         csv_file_path = csv_file_path_list[0]
+#         print(csv_file_path)
+#         extreme_data = self.find_csv_extreme_rows(
+#                         csv_file_path=csv_file_path,
+#                         target_header_pattern="dB(S(Probe_Port_T1,Probe_Port_T1))",
+#                         extreme_type="min")
+#
+#         # 3. 打印结果（可选）
+#         print(f"共找到 {len(extreme_data)} 个极值行：")
+#         for i, row in enumerate(extreme_data, 1):
+#             print(f"\n=== 第{i}个极值行 ===")
+#             print(f"极值列：{row['_极值列']} | 类型：{row['_极值类型']} | 数值：{row['_极值数值']:.6f}")
+#             print("核心数据（前5列）：")
+#             count = 0
+#             for key, value in row.items():
+#                 if not key.startswith("_"):
+#                     print(f"  {key}: {value}")
+#                     count += 1
+#                     if count >= 2:
+#                         break
+
+        # 4. 保存结果
+        self.save_extreme_dicts(
+            extreme_dicts=min_row_data,
+            output_file=output_path,
+            append=True,
+            add_separator=True
+        )
+
+        input("请按回车键继续1100...")
+        print("=" * 80)
+        return True
     def save_farfield_data_to_csv(self, data):
         # 你的原始字典数据（此处省略，替换为你的实际字典变量名即可）
         # data = 你的字典变量
@@ -376,6 +417,7 @@ class AdvancedHFSSEntennaSimulator:
 
         print(f"CSV文件已保存！共 {len(csv_rows)} 行数据，{len(header)} 列参数。")
 
+ # ----------------------------------------------不在使用 begin-------------------------------------------------
     def readcsv_to_dict(self, csv_file_path):
         # 读取CSV，仅取前2行（表头+第二行数据）
         df = pd.read_csv(csv_file_path, nrows=1)  # nrows=1 表示仅读取1行数据（第二行）
@@ -385,7 +427,6 @@ class AdvancedHFSSEntennaSimulator:
 
     def save_to_jsonfile(self, data_dict, output_file_path):
         # 保存字典到文件
-        import json
         # 追加字典到文件末尾（每行一个JSON）
         with open(output_file_path, "a", encoding="utf-8") as f:
             # 字典转为JSON字符串，添加换行符（确保每行一个字典）
@@ -400,6 +441,159 @@ class AdvancedHFSSEntennaSimulator:
             print(f.read())
 
         return data_dict
+# ----------------------------------------------不在使用 end-------------------------------------------------
+    def find_min_in_second_column(self, csv_file_path: str, encoding: str = "utf-8") -> Optional[List[Dict[str, Union[str, float]]]]:
+
+        header: List[str] = []
+
+        min_value: float = float("inf")
+        min_row_dict: Optional[Dict[str, Union[str, float]]] = None
+
+        try:
+            # 验证输入是合法路径（避免再次传入非路径对象）
+            if not isinstance(csv_file_path, (str, bytes, os.PathLike)):
+                raise TypeError(f"csv_file_path 必须是字符串路径，当前类型：{type(csv_file_path).__name__}")
+
+            with open(csv_file_path, "r", encoding=encoding) as f:
+                reader = csv.reader(f)
+                header = next(reader)
+                if len(header) < 2:
+                    print("错误：CSV文件至少需要2列数据")
+                    return None
+
+                for row_idx, row in enumerate(reader, 2):
+                    if not row or len(row) < 2:
+                        print(f"警告：第{row_idx}行数据不完整，已跳过")
+                        continue
+
+                    try:
+                        second_col_value = float(row[1])
+                    except ValueError:
+                        print(f"警告：第{row_idx}行第二列数据 '{row[1]}' 不是有效数值，已跳过")
+                        continue
+
+                    if second_col_value < min_value:
+                        min_value = second_col_value
+                        row_dict = {}
+                        for col_name, value in zip(header, row):
+                            try:
+                                row_dict[col_name] = float(value)
+                            except ValueError:
+                                row_dict[col_name] = value
+                        min_row_dict = row_dict
+
+            if min_row_dict is None:
+                print("未找到第二列的有效数值数据")
+                return None
+            else:
+                min_row_dict["_最小值"] = min_value
+                min_row_dict["_最小值所在列名"] = header[1]
+                print(f"找到第二列最小值：{min_value}（列名：{header[1]}）")
+                return [min_row_dict]
+
+        except FileNotFoundError:
+            raise Exception(f"未找到CSV文件：{csv_file_path}")
+        except Exception as e:
+            raise Exception(f"读取CSV文件失败：{str(e)}")
+
+
+    def find_csv_extreme_rows(self,
+                                csv_file_path: str,
+                                target_header_pattern: str,
+                                extreme_type: str) -> List[Dict[str, Union[str, float]]]:
+        print("find_csv_extreme_rows")
+        # 步骤1：读取CSV并转换数据类型
+        header: List[str] = []
+        data_rows: List[Dict[str, Union[str, float]]] = []
+
+        with open(csv_file_path, "r", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            # 读取表头
+            header = next(reader)
+            # 读取数据行并转换数值类型
+            for row in reader:
+                row_dict = {}
+                for col_name, value in zip(header, row):
+                    try:
+                        row_dict[col_name] = float(value)
+                    except ValueError:
+                        row_dict[col_name] = value  # 非数值保留字符串
+                data_rows.append(row_dict)
+
+        # 校验数据行
+        if not data_rows:
+            raise ValueError("CSV文件中未包含有效数据行")
+
+        # 步骤2：通配符匹配目标表头
+        pattern = re.compile(f"^{target_header_pattern.replace('*', '.*')}$", re.IGNORECASE)
+        target_headers = [col for col in header if pattern.match(col)]
+
+        if not target_headers:
+            raise ValueError(f"未找到匹配模式 '{target_header_pattern}' 的表头列")
+
+        # 步骤3：计算每个目标列的极值行
+        extreme_rows = []
+        for target_col in target_headers:
+            # 过滤可比较的数值行
+            valid_rows = [row for row in data_rows if isinstance(row[target_col], float)]
+            if not valid_rows:
+                print(f"警告：列 '{target_col}' 无有效数值数据，已跳过")
+                continue
+
+            # 查找极值行
+            if extreme_type == "max":
+                extreme_row = max(valid_rows, key=lambda x: x[target_col])
+            elif extreme_type == "min":
+                extreme_row = min(valid_rows, key=lambda x: x[target_col])
+            else:
+                raise ValueError("extreme_type 必须为 'max' 或 'min'")
+
+            # 添加辅助标识字段
+            extreme_row.update({
+                "_极值列": target_col,
+                "_极值类型": extreme_type,
+                "_极值数值": extreme_row[target_col]
+            })
+            extreme_rows.append(extreme_row)
+        print("find_csv_extreme_rows end")
+        return extreme_rows
+
+    def save_extreme_dicts(self,
+            extreme_dicts: List[Dict[str, Union[str, float]]],
+            output_file: str,
+            append: bool = True,
+            add_separator: bool = True
+    ) -> None:
+        print("save_extreme_dicts")
+        """
+        将极值行字典列表保存到文件（JSON格式，支持追加）
+
+        参数：
+            extreme_dicts: List[Dict] - 由find_csv_extreme_rows返回的极值行字典列表
+            output_file: str - 输出文件路径（如"extreme_results.json"）
+            append: bool - 是否追加模式（True=追加，False=覆盖），默认True
+            add_separator: bool - 是否添加字典分隔符（便于阅读），默认True
+
+        异常：
+            IOError: 文件写入失败
+        """
+        if not extreme_dicts:
+            print("警告：无有效极值数据可保存")
+            return
+
+        mode = "a" if append else "w"
+        with open(output_file, mode, encoding="utf-8") as f:
+            for idx, data_dict in enumerate(extreme_dicts):
+                # 写入字典（带缩进，支持中文）
+                json.dump(data_dict, f, ensure_ascii=False, indent=4)
+                # 添加分隔符（最后一个字典后不添加）
+                if add_separator and idx != len(extreme_dicts) - 1:
+                    f.write("\n" + "-" * 60 + "\n\n")
+                else:
+                    f.write("\n")  # 换行保证后续追加格式正确
+
+        print(f"数据已{'追加' if append else '保存'}到：{output_file}")
+
     def extract_s_parameters(self):
         spar_plot = self.hfss.create_scattering()
 
