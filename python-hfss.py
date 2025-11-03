@@ -1,8 +1,11 @@
 import csv
+import warnings
+from datetime import datetime
 import glob
 import os
 import tempfile
 import time
+from pathlib import Path
 
 import numpy as np
 import ansys.aedt.core
@@ -19,7 +22,7 @@ from django.contrib.messages import success
 from ansys.aedt.core import Hfss
 import matplotlib.pyplot as plt
 
-from typing import List, Dict, Union, Optional
+from typing import List, Dict, Union, Optional, Any
 
 
 class AdvancedHFSSEntennaSimulator:
@@ -257,13 +260,17 @@ class AdvancedHFSSEntennaSimulator:
         data = ffdata.farfield_data.combine_farfield(phi_scan=0.0, theta_scan=0.0)
         # print(data)
         print("=" * 80)
-        self.save_farfield_data_to_csv(data)
+
+        csv_file_path_base = "./RESULT_Farfile/farfield_data_zidian.csv"
+        output_path_base = "./RESULT/data_dict_pandas.csv"
+        target_pattern = "RealizedGain"
+
+        csv_file_path, output_path = self.add_timestamp_to_filename(csv_file_path_base, output_path_base)
+        self.save_farfield_data_to_csv(data, csv_file_path)
 
 # --------------------------------------------------提取增益最大结果并保存-------------------------------------------------
         # 替换为你的CSV文件路径
-        csv_file_path = "./farfield_data_zidian.csv"
-        output_path = "data_dict_pandas.json"
-        target_pattern = "RealizedGain"
+
 
         extreme_data = self.find_csv_extreme_rows(
             csv_file_path=csv_file_path,
@@ -284,24 +291,37 @@ class AdvancedHFSSEntennaSimulator:
                         break
 
         # 4. 保存结果
-        self.save_extreme_dicts(
+        # self.save_extreme_dicts(
+        #     extreme_dicts=extreme_data,
+        #     output_file=output_path,
+        #     append=True,
+        #     add_separator=True
+        # )
+        self.save_extreme_dicts_to_csv(
+            extreme_dicts=self.convert_any_dict_to_list_dict(self.antenna_params),
+            output_file=output_path,
+            append=True,
+            append_by_column=False
+        )
+
+        self.save_extreme_dicts_to_csv(
             extreme_dicts=extreme_data,
             output_file=output_path,
             append=True,
-            add_separator=True
+            append_by_column=True
         )
 
         input("请按回车键继续6...")
-        exported_files = self.aedtapp.export_results(export_folder='./RESULT')
+        exported_files = self.aedtapp.export_results(export_folder='./RESULT_S')
         print(exported_files[0])
         input("请按回车键继续6222...")
 
 
         input("请按回车键继续77776...")
 # --------------------------------------------------提取S最小结果并保存-------------------------------------------------
-        csv_path = glob.glob("./RESULT/patch_patch_Plot_*.csv")
+        csv_path = glob.glob("RESULT_S/patch_patch_Plot_*.csv")
         print(csv_path[0])
-        # min_row_data = self.find_min_in_second_column("./RESULT/patch_patch_Plot_36L36E.csv",
+        # min_row_data = self.find_min_in_second_column("./RESULT_S/patch_patch_Plot_36L36E.csv",
         #                                               encoding="utf-8",)
         min_row_data = self.find_min_in_second_column(csv_path[0],encoding="utf-8", )
         # 打印结果（格式化输出，可读性强）
@@ -317,7 +337,7 @@ class AdvancedHFSSEntennaSimulator:
                 print(f"  {key}: {value}（类型：{type(value).__name__}）")
 
 #         # 替换为你的CSV文件路径
-#         csv_file_path_list =  glob.glob("./RESULT/patch_patch_Plot_*.csv")
+#         csv_file_path_list =  glob.glob("./RESULT_S/patch_patch_Plot_*.csv")
 #         csv_file_path = csv_file_path_list[0]
 #         print(csv_file_path)
 #         extreme_data = self.find_csv_extreme_rows(
@@ -340,17 +360,23 @@ class AdvancedHFSSEntennaSimulator:
 #                         break
 
         # 4. 保存结果
-        self.save_extreme_dicts(
+        # self.save_extreme_dicts(
+        #     extreme_dicts=min_row_data,
+        #     output_file=output_path,
+        #     append=True,
+        #     add_separator=True
+        # )
+        self.save_extreme_dicts_to_csv(
             extreme_dicts=min_row_data,
             output_file=output_path,
             append=True,
-            add_separator=True
+            append_by_column=True
         )
 
         input("请按回车键继续1100...")
         print("=" * 80)
         return True
-    def save_farfield_data_to_csv(self, data):
+    def save_farfield_data_to_csv(self, data, file_name):
         # 你的原始字典数据（此处省略，替换为你的实际字典变量名即可）
         # data = 你的字典变量
 
@@ -398,7 +424,7 @@ class AdvancedHFSSEntennaSimulator:
                 csv_rows.append(row)
 
         # 4. 保存到CSV文件
-        with open("./farfield_data_zidian.csv", "w", newline="", encoding="utf-8") as f:
+        with open(file_name, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerow(header)  # 写入表头
             writer.writerows(csv_rows)  # 写入所有数据行
@@ -581,9 +607,262 @@ class AdvancedHFSSEntennaSimulator:
 
         print(f"数据已{'追加' if append else '保存'}到：{output_file}")
 
+    def save_extreme_dicts_to_csv(self,
+                                  extreme_dicts: List[Dict[str, Union[str, float]]],
+                                  output_file: str,
+                                  append: bool = True,
+                                  encoding: str = "utf-8-sig",
+                                  remove_braces: bool = True,  # 去除字典大括号（转为纯值）
+                                  keep_header: bool = True,  # 是否保留表头
+                                  append_by_column: bool = False  # 新增：是否按列追加（False=按行，True=按列）
+                                  ) -> None:
+        """
+        将极值行字典列表保存到CSV文件（支持按行/按列追加，去除大括号）
+
+        参数：
+            extreme_dicts: List[Dict] - 极值行字典列表（每个字典对应一条记录）
+            output_file: str - 输出CSV文件路径
+            append: bool - 是否追加模式（True=追加，False=覆盖），默认True
+            encoding: str - 文件编码（默认utf-8-sig，兼容Excel）
+            remove_braces: bool - 是否去除大括号（转为纯值列表），默认True
+            keep_header: bool - 是否保留表头（字段名），默认True
+            append_by_column: bool - 追加方式（False=按行追加，True=按列追加），默认False
+
+        异常：
+            IOError: 文件写入失败
+            ValueError: 按列追加时新旧数据行数不匹配
+        """
+        # 校验输入数据
+        if not extreme_dicts:
+            print("警告：极值字典列表为空，未写入任何数据")
+            return
+
+        # 提取所有字段（固定顺序）
+        all_fields = set()
+        for row_dict in extreme_dicts:
+            if not isinstance(row_dict, dict):
+                raise TypeError(f"极值列表元素必须是字典，当前存在类型：{type(row_dict).__name__}")
+            all_fields.update(row_dict.keys())
+        csv_headers = sorted(all_fields)
+        new_data_rows = len(extreme_dicts)  # 新数据的行数（按行追加时=记录数，按列追加时=每条记录的列数）
+
+        # 处理新数据：转为纯值列表（去除大括号）
+        new_data = []
+        if remove_braces:
+            # 按表头顺序提取值，每个字典→一个值列表
+            for row_dict in extreme_dicts:
+                row_values = [row_dict.get(field, "") for field in csv_headers]
+                new_data.append(row_values)
+        else:
+            new_data = extreme_dicts  # 保留字典格式（不推荐，仅兼容）
+
+        # 按列追加模式：需要读取原有数据，合并后重新写入
+        if append_by_column and append and Path(output_file).exists():
+            # 1. 读取原有CSV数据
+            old_data = []
+            old_headers = []
+            with open(output_file, "r", encoding=encoding, newline="") as f:
+                reader = csv.reader(f)
+                # 读取表头（若存在）
+                if keep_header:
+                    old_headers = next(reader, [])
+                # 读取数据行
+                old_data = [row for row in reader]
+
+            # 2. 校验新旧数据行数匹配（按列追加时，新数据的行数=旧数据的行数）
+            if len(old_data) != new_data_rows:
+                raise ValueError(
+                    f"按列追加失败：新旧数据行数不匹配（原有数据行数：{len(old_data)}，新数据行数：{new_data_rows}）"
+                )
+
+            # 3. 合并表头（旧表头 + 新表头）
+            merged_headers = old_headers + csv_headers if keep_header else []
+            # 4. 合并数据（每行旧数据 + 对应行新数据）
+            merged_data = []
+            for old_row, new_row in zip(old_data, new_data):
+                merged_row = old_row + new_row
+                merged_data.append(merged_row)
+
+            # 5. 覆盖写入合并后的数据（按列追加本质是合并后重写）
+            with open(output_file, "w", encoding=encoding, newline="") as f:
+                writer = csv.writer(f)
+                if keep_header and merged_headers:
+                    writer.writerow(merged_headers)
+                writer.writerows(merged_data)
+
+            print(f"按列追加成功！")
+            print(f"- 新增列数：{len(csv_headers)} 列（{', '.join(csv_headers)}）")
+            print(
+                f"- 合并后总行数：{len(merged_data)} 行，总列数：{len(merged_headers) if merged_headers else len(merged_data[0])} 列")
+
+        # 按行追加/覆盖模式（原有逻辑优化）
+        else:
+            file_mode = "a" if append else "w"
+            file_exists = Path(output_file).exists()
+
+            try:
+                with open(output_file, file_mode, encoding=encoding, newline="") as f:
+                    writer = csv.writer(f)
+                    # 写表头（仅当需要保留且文件不存在/覆盖模式时）
+                    if keep_header and (not file_exists or not append):
+                        writer.writerow(csv_headers)
+
+                    # 逐行写入新数据
+                    writer.writerows(new_data)
+
+                print(f"{'按行追加' if append else '覆盖'}成功！")
+                print(f"- 写入行数：{len(new_data)} 行，列数：{len(csv_headers)} 列")
+                print(f"- 表头：{'保留' if keep_header else '不保留'}，大括号：{'已去除' if remove_braces else '保留'}")
+
+            except Exception as e:
+                raise IOError(f"文件写入失败：{str(e)}") from e
+
+    def add_timestamp_to_filename(self,
+            base_filename: str,
+            base_filename2: str,
+            time_format: str = "%Y%m%d_%H%M%S",  # 时间戳格式：年-月-日_时-分-秒
+            separator: str = "_"  # 基础名与时间戳的分隔符
+    ) -> tuple[str, str]:
+        """
+        在文件名后添加时间戳（插入到基础名和后缀之间）
+
+        参数：
+            base_filename: 原始文件名（可带路径，如"result.csv"或"./data/extreme.json"）
+            time_format: 时间戳格式（默认：%Y%m%d_%H%M%S → 20241025_143022）
+            separator: 基础名与时间戳的连接符（默认下划线"_"）
+
+        返回：
+            带时间戳的新文件名（如"result_20241025_143022.csv"）
+        """
+        # 1. 拆分文件名：基础名 + 后缀（处理带路径的情况）
+        # os.path.splitext 会拆分最后一个"."后的后缀（如"archive.tar.gz" → ("archive.tar", ".gz")）
+        # 新增：严格校验输入类型（提前拦截错误）
+        if not isinstance(base_filename, (str, bytes, os.PathLike)):
+            raise TypeError(
+                f"base_filename 必须是字符串路径，当前类型：{type(base_filename).__name__}，值：{base_filename}"
+            )
+
+        # 拆分路径和文件名（原逻辑不变）
+        file_dir, file_name = os.path.split(base_filename)
+        file_dir2, file_name2 = os.path.split(base_filename2)
+
+        base_name, ext = os.path.splitext(file_name)
+        base_name2, ext2 = os.path.splitext(file_name2)
+
+        # 生成时间戳并拼接新文件名
+        timestamp = datetime.now().strftime(time_format)
+
+        new_file_name = f"{base_name}{separator}{timestamp}{ext}"
+        new_file_name2 = f"{base_name2}{separator}{timestamp}{ext2}"
+
+        new_filename = os.path.join(file_dir, new_file_name)
+        new_filename2 = os.path.join(file_dir2, new_file_name2)
+
+        return new_filename, new_filename2
+
     def extract_s_parameters(self):
         spar_plot = self.hfss.create_scattering()
 
+    def find_csv_extreme_rows_all(self,
+            csv_file_path: str = None,
+            header_pattern:str = None,
+            extreme_type:str = None,
+            output_file: str = None):
+
+        csv_files = glob.glob(csv_file_path)
+        for file in csv_files:
+            try:
+                results = self.find_csv_extreme_rows(file, header_pattern, extreme_type)
+                self.save_extreme_dicts_to_csv(results, output_file, append=True)
+            except Exception as e:
+                print(f"处理文件 {file} 失败：{e}")
+
+    def convert_any_dict_to_list_dict(self,
+            input_dict: Dict[str | Any, str | int | float | Any],
+            key_convert_func: Optional[callable] = None,
+            value_convert_func: Optional[callable] = None,
+            ignore_invalid: bool = True
+    ) -> List[Dict[str, Union[str, float]]]:
+        """
+        将 dict[str | Any, str | int | float | Any] 转换为 list[dict[str, str | float]]
+
+        参数：
+            input_dict: 输入字典（键可能含 Any 类型，值可能含 int/Any 类型）
+            key_convert_func: 自定义键转换函数（输入任意类型键，返回 str 类型；未指定则用默认逻辑）
+            value_convert_func: 自定义值转换函数（输入任意类型值，返回 str/float；未指定则用默认逻辑）
+            ignore_invalid: 是否忽略无效的键/值（True=跳过，False=抛出异常）
+
+        返回：
+            List[Dict[str, str | float]]: 列表套单个字典，键为 str，值为 str 或 float
+        """
+        # 初始化输出字典
+        output_dict: Dict[str, Union[str, float]] = {}
+
+        # 处理每个键值对
+        for key, value in input_dict.items():
+            # ---------------------- 处理键：确保为 str 类型 ----------------------
+            try:
+                if key_convert_func is not None:
+                    # 使用自定义键转换函数
+                    str_key = key_convert_func(key)
+                    if not isinstance(str_key, str):
+                        raise TypeError(f"自定义键转换函数返回类型必须是 str，当前为 {type(str_key).__name__}")
+                else:
+                    # 默认转换逻辑：直接转 str，无法转换则视为无效
+                    if isinstance(key, (str, int, float, bool)):
+                        str_key = str(key)
+                    else:
+                        # 对复杂类型（如对象），尝试取 __name__ 或 __str__
+                        if hasattr(key, "__name__"):
+                            str_key = key.__name__
+                        elif hasattr(key, "__str__"):
+                            str_key = str(key)
+                        else:
+                            raise ValueError(f"键 {key}（类型：{type(key).__name__}）无法转为 str")
+            except Exception as e:
+                msg = f"键 {key} 转换失败：{str(e)}"
+                if ignore_invalid:
+                    warnings.warn(msg)
+                    continue
+                else:
+                    raise TypeError(msg) from e
+
+            # ---------------------- 处理值：确保为 str 或 float 类型 ----------------------
+            try:
+                if value_convert_func is not None:
+                    # 使用自定义值转换函数
+                    valid_value = value_convert_func(value)
+                    if not isinstance(valid_value, (str, float)):
+                        raise TypeError(f"自定义值转换函数返回类型必须是 str/float，当前为 {type(valid_value).__name__}")
+                else:
+                    # 默认转换逻辑：int→float，其他类型尝试转 float/str
+                    if isinstance(value, int):
+                        valid_value = float(value)  # int 自动转 float
+                    elif isinstance(value, float):
+                        valid_value = value  # 直接保留 float
+                    elif isinstance(value, str):
+                        valid_value = value  # 直接保留 str
+                    elif value is None:
+                        valid_value = ""  # None 转为空字符串
+                    else:
+                        # 尝试转 float，失败则转 str
+                        try:
+                            valid_value = float(value)
+                        except (ValueError, TypeError):
+                            valid_value = str(value)
+            except Exception as e:
+                msg = f"值 {value}（键：{str_key}）转换失败：{str(e)}"
+                if ignore_invalid:
+                    warnings.warn(msg)
+                    continue
+                else:
+                    raise TypeError(msg) from e
+
+            # 加入输出字典（避免重复键，后出现的覆盖前一个）
+            output_dict[str_key] = valid_value
+
+        # 包装为 list[dict] 格式返回
+        return [output_dict]
 
 def main():
     print("=" * 80)
