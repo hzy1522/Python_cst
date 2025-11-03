@@ -136,18 +136,6 @@ class AdvancedHFSSEntennaSimulator:
         #创建贴片天线
         #贴片天线由接地层、介质基板和顶部信号层组成，贴片天线位于顶部信号层上。
         stackup = Stackup3D(self.hfss)
-        # ground = stackup.add_ground_layer(
-        #     "ground", material="copper", thickness=0.035, fill_material="air"
-        # )
-        # dielectric = stackup.add_dielectric_layer(
-        #     "dielectric", thickness="0.5" + self.length_units, material="Duroid (tm)"
-        # )
-        # signal = stackup.add_signal_layer(
-        #     "signal", material="copper", thickness=0.035, fill_material="air"
-        # )
-        # patch = signal.add_patch(
-        #     patch_length=9.57, patch_width=9.25, patch_name="Patch", frequency=1e10
-        # )
 
         ground = stackup.add_ground_layer(
             "ground", material="copper", thickness=self.antenna_params["ground_thickness"], fill_material="air"
@@ -418,29 +406,29 @@ class AdvancedHFSSEntennaSimulator:
         print(f"CSV文件已保存！共 {len(csv_rows)} 行数据，{len(header)} 列参数。")
 
  # ----------------------------------------------不在使用 begin-------------------------------------------------
-    def readcsv_to_dict(self, csv_file_path):
-        # 读取CSV，仅取前2行（表头+第二行数据）
-        df = pd.read_csv(csv_file_path, nrows=1)  # nrows=1 表示仅读取1行数据（第二行）
-        # 转换为字典（orient="records" 按行转换，取第一个元素即为目标字典）
-        data_dict = df.to_dict(orient="records")[0]
-        return data_dict
-
-    def save_to_jsonfile(self, data_dict, output_file_path):
-        # 保存字典到文件
-        # 追加字典到文件末尾（每行一个JSON）
-        with open(output_file_path, "a", encoding="utf-8") as f:
-            # 字典转为JSON字符串，添加换行符（确保每行一个字典）
-            json.dump(data_dict, f, ensure_ascii=False)
-            f.write("\n")  # 换行，便于下次追加和读取
-
-        print(f"字典已追加到 {output_file_path} 文件末尾")
-
-        # 验证结果（可选）
-        print("\n文件当前内容：")
-        with open(output_file_path, "r", encoding="utf-8") as f:
-            print(f.read())
-
-        return data_dict
+ #    def readcsv_to_dict(self, csv_file_path):
+ #        # 读取CSV，仅取前2行（表头+第二行数据）
+ #        df = pd.read_csv(csv_file_path, nrows=1)  # nrows=1 表示仅读取1行数据（第二行）
+ #        # 转换为字典（orient="records" 按行转换，取第一个元素即为目标字典）
+ #        data_dict = df.to_dict(orient="records")[0]
+ #        return data_dict
+ #
+ #    def save_to_jsonfile(self, data_dict, output_file_path):
+ #        # 保存字典到文件
+ #        # 追加字典到文件末尾（每行一个JSON）
+ #        with open(output_file_path, "a", encoding="utf-8") as f:
+ #            # 字典转为JSON字符串，添加换行符（确保每行一个字典）
+ #            json.dump(data_dict, f, ensure_ascii=False)
+ #            f.write("\n")  # 换行，便于下次追加和读取
+ #
+ #        print(f"字典已追加到 {output_file_path} 文件末尾")
+ #
+ #        # 验证结果（可选）
+ #        print("\n文件当前内容：")
+ #        with open(output_file_path, "r", encoding="utf-8") as f:
+ #            print(f.read())
+ #
+ #        return data_dict
 # ----------------------------------------------不在使用 end-------------------------------------------------
     def find_min_in_second_column(self, csv_file_path: str, encoding: str = "utf-8") -> Optional[List[Dict[str, Union[str, float]]]]:
 
@@ -564,7 +552,6 @@ class AdvancedHFSSEntennaSimulator:
             append: bool = True,
             add_separator: bool = True
     ) -> None:
-        print("save_extreme_dicts")
         """
         将极值行字典列表保存到文件（JSON格式，支持追加）
 
