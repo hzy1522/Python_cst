@@ -314,8 +314,9 @@ def batch_optimization_demo():
     # 合并所有数据到 merged_detailed_antenna_data。csv 文件
     input_pattern = "./RESULT/data_dict_pandas_*.csv"
     output_file = "merged_detailed_antenna_data.csv"
+    header_check_count = 40
     # 运行合并
-    merge_single_line_csv_files(input_pattern, output_file)
+    merge_single_line_csv_files(input_pattern, output_file, header_check_count)
 
     print(f"\n合并完成！")
 
