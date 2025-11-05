@@ -27,28 +27,36 @@ from typing import List, Dict, Union, Optional, Any
 
 class AdvancedHFSSEntennaSimulator:
 
-    def __init__(self, temp_folder=None,   NG_MODE=None,   AEDT_VERSION=None,   NUM_CORES=None):
+    def __init__(self,
+                 temp_folder=None,
+                 NG_MODE=None,
+                 AEDT_VERSION=None,
+                 NUM_CORES=None,
+                 antenna_params = None,):
 
         self.temp_folder = temp_folder
         self.NG_MODE = NG_MODE
         self.AEDT_VERSION = AEDT_VERSION
         self.NUM_CORES = NUM_CORES
         self.project_name = os.path.join(self.temp_folder.name, "patch.aedt")
-
-        self.antenna_params = {
-            "unit": "GHz", #单位设置
-            "start_frequency": 8,  # 起始工作频率 (GHz)
-            "stop_frequency": 12,  #截止频率
-            "center_frequency": 10,  #中心频率
-            "sweep_type": "Fast", #扫描频率设置
-            "ground_thickness": 0.035,  # 地板厚度 (mm)
-            "signal_layer_thickness": 0.035, #信号线厚度(mm)
-            "patch_length": 9.57, # 贴片长度(mm)
-            "patch_width": 9.25, #
-            "patch_name": "Patch",
-            "freq_step" : "2GHz",
-            "num_of_freq_points": 101,
-        }
+        self.gain_value = None
+        self.s_parms_min = None
+        self.fre_value = None
+        self.antenna_params = antenna_params
+        # self.antenna_params = {
+        #     "unit": "GHz", #单位设置
+        #     "start_frequency": 8,  # 起始工作频率 (GHz)
+        #     "stop_frequency": 12,  #截止频率
+        #     "center_frequency": 10,  #中心频率
+        #     "sweep_type": "Fast", #扫描频率设置
+        #     "ground_thickness": 0.035,  # 地板厚度 (mm)
+        #     "signal_layer_thickness": 0.035, #信号线厚度(mm)
+        #     "patch_length": 9.57, # 贴片长度(mm)
+        #     "patch_width": 9.25, #
+        #     "patch_name": "Patch",
+        #     "freq_step" : "2GHz",
+        #     "num_of_freq_points": 101,
+        # }
         self.disc_sweep = None
         self.interp_sweep = None
     def run_full_hfss_simulation(self):
@@ -102,7 +110,7 @@ class AdvancedHFSSEntennaSimulator:
             #清理
             self.temp_folder.cleanup()
 
-        return success
+        return success, self.fre_value, self.gain_value, self.s_parms_min
 
     def start_hfss_simulation(self):
         print("=" * 80)
@@ -239,7 +247,7 @@ class AdvancedHFSSEntennaSimulator:
         plt.show()
         print("=" * 80)
 
-        input("请按回车键继续1...")
+        # input("请按回车键继续1...")
         print("远区场辐射图")
 # --------------------------------------------------远区场辐射图-------------------------------------------------
         print("=" * 80)
@@ -248,7 +256,7 @@ class AdvancedHFSSEntennaSimulator:
             # sphere="Infinite Sphere1",
             link_to_hfss = True)
         # print("对象类型：", type(ffdata))
-        input("请按回车键继续11...")
+        # input("请按回车键继续11...")
         metadata_file = ffdata.metadata_file
         farfield_data = FfdSolutionData(input_file=metadata_file)
         farfield_data.plot_3d(quantity_format="dB10",
@@ -286,8 +294,10 @@ class AdvancedHFSSEntennaSimulator:
             for key, value in row.items():
                 if not key.startswith("_"):
                     print(f"  {key}: {value}")
+                    if count == 14:
+                        self.gain_value = value
                     count += 1
-                    if count >= 5:
+                    if count >= 15:
                         break
 
         # 4. 保存结果
@@ -311,13 +321,13 @@ class AdvancedHFSSEntennaSimulator:
             append_by_column=True
         )
 
-        input("请按回车键继续6...")
+        # input("请按回车键继续6...")
         exported_files = self.aedtapp.export_results(export_folder='./RESULT_S')
         print(exported_files[0])
-        input("请按回车键继续6222...")
+        # input("请按回车键继续6222...")
 
 
-        input("请按回车键继续77776...")
+        # input("请按回车键继续77776...")
 # --------------------------------------------------提取S最小结果并保存-------------------------------------------------
         csv_path = glob.glob("RESULT_S/patch_patch_Plot_*.csv")
         print(csv_path[0])
@@ -335,6 +345,10 @@ class AdvancedHFSSEntennaSimulator:
             print("\n详细数据：")
             for key, value in min_row_data[0].items():
                 print(f"  {key}: {value}（类型：{type(value).__name__}）")
+                if key == 'Freq [GHz]':
+                    self.fre_value = value
+                elif key == '_最小值':
+                    self.s_parms_min = value
 
 #         # 替换为你的CSV文件路径
 #         csv_file_path_list =  glob.glob("./RESULT_S/patch_patch_Plot_*.csv")
@@ -373,7 +387,7 @@ class AdvancedHFSSEntennaSimulator:
             append_by_column=True
         )
 
-        input("请按回车键继续1100...")
+        # input("请按回车键继续1100...")
         print("=" * 80)
         return True
     def save_farfield_data_to_csv(self, data, file_name):
@@ -864,6 +878,35 @@ class AdvancedHFSSEntennaSimulator:
         # 包装为 list[dict] 格式返回
         return [output_dict]
 
+def calculate_from_hfss(antenna_params):
+    print("=" * 80)
+    print("python 调用 HFSS计算探针馈电贴片天线开始")
+    print("=" * 80)
+
+    # 定义常量
+    AEDT_VERSION = "2025R1"
+    NUM_CORES = 4
+    # NG_MODE = False  # Open AEDT UI when it is launched.
+    NG_MODE = True  # Not Open AEDT UI when it is launched.
+
+    # 创建临时目录
+    temp_folder = tempfile.TemporaryDirectory(suffix=".ansys")
+
+    simulator = AdvancedHFSSEntennaSimulator(temp_folder, NG_MODE, AEDT_VERSION, NUM_CORES, antenna_params)
+
+    success, fre_value, gain_value, s_prams_min = simulator.run_full_hfss_simulation()
+
+    if success:
+        print("\n" + "="*80)
+        print("天线仿真成功完成！")
+        print("="*80)
+        return success, fre_value, gain_value, s_prams_min
+    else:
+        print("\n" + "="*80)
+        print("天线仿真失败")
+        print("="*80)
+        return False
+
 def main():
     print("=" * 80)
     print("python 调用 HFSS计算探针馈电贴片天线开始")
@@ -874,16 +917,31 @@ def main():
     NUM_CORES = 4
     NG_MODE = False  # Open AEDT UI when it is launched.
 
+    antenna_params = {
+        "unit": "GHz",  # 单位设置
+        "start_frequency": 8,  # 起始工作频率 (GHz)
+        "stop_frequency": 12,  # 截止频率
+        "center_frequency": 10,  # 中心频率
+        "sweep_type": "Fast",  # 扫描频率设置
+        "ground_thickness": 0.035,  # 地板厚度 (mm)
+        "signal_layer_thickness": 0.035,  # 信号线厚度(mm)
+        "patch_length": 9.57,  # 贴片长度(mm)
+        "patch_width": 9.25,  #
+        "patch_name": "Patch",
+        "freq_step": "2GHz",
+        "num_of_freq_points": 101,
+    }
     # 创建临时目录
     temp_folder = tempfile.TemporaryDirectory(suffix=".ansys")
 
-    simulator = AdvancedHFSSEntennaSimulator(temp_folder, NG_MODE, AEDT_VERSION, NUM_CORES)
+    simulator = AdvancedHFSSEntennaSimulator(temp_folder, NG_MODE, AEDT_VERSION, NUM_CORES, antenna_params)
 
-    success = simulator.run_full_hfss_simulation()
+    success, fre_value, gain_value, s_prams_min  = simulator.run_full_hfss_simulation()
 
     if success:
         print("\n" + "="*80)
         print("天线仿真成功完成！")
+        print(f"fre={fre_value}GHz, gain_value={gain_value}dB, s_prams_min=", s_prams_min)
         print("="*80)
     else:
         print("\n" + "="*80)
