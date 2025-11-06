@@ -564,7 +564,7 @@ if __name__ == "__main__":
 
     # 运行完整工作流程演示
     print("\n正在运行完整设计流程...")
-    # design_report = complete_workflow_demo()
+    design_report = complete_workflow_demo()
 
     # 演示2: 批量设计（可选）
     print("\n" + "=" * 50)
