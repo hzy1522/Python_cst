@@ -59,7 +59,7 @@ class AdvancedHFSSEntennaSimulator:
         # }
         self.disc_sweep = None
         self.interp_sweep = None
-    def run_full_hfss_simulation(self):
+    def run_full_hfss_simulation(self, train_model):
         print("=" * 80)
         print("开始增强版微带贴片天线 HFSS 仿真流程")
 
@@ -85,7 +85,7 @@ class AdvancedHFSSEntennaSimulator:
             if not self.run_analysis():
                 return False
             #7. 后处理
-            if not self.post_processing():
+            if not self.post_processing(train_model):
                 return False
 
             print("=" * 80)
@@ -233,7 +233,7 @@ class AdvancedHFSSEntennaSimulator:
         self.hfss.analyze(cores=self.NUM_CORES)
         return True
 
-    def post_processing(self):
+    def post_processing(self, train_model):
         print("=" * 80)
         print("后处理")
         #后处理
@@ -269,8 +269,13 @@ class AdvancedHFSSEntennaSimulator:
         # print(data)
         print("=" * 80)
 
-        csv_file_path_base = "./RESULT_Farfile/farfield_data_zidian.csv"
-        output_path_base = "./RESULT/data_dict_pandas.csv"
+        if train_model:
+            csv_file_path_base = "./RESULT_Farfile/farfield_data_zidian.csv"
+            output_path_base = "./RESULT/data_dict_pandas.csv"
+        else:
+            csv_file_path_base = "./TEST_RESULT/farfield_data_zidian.csv"
+            output_path_base = "./TEST_RESULT/data_dict_pandas.csv"
+
         target_pattern = "RealizedGain"
 
         csv_file_path, output_path = self.add_timestamp_to_filename(csv_file_path_base, output_path_base)
@@ -878,7 +883,7 @@ class AdvancedHFSSEntennaSimulator:
         # 包装为 list[dict] 格式返回
         return [output_dict]
 
-def calculate_from_hfss(antenna_params):
+def calculate_from_hfss(antenna_params, train_model):
     print("=" * 80)
     print("python 调用 HFSS计算探针馈电贴片天线开始")
     print("=" * 80)
@@ -894,7 +899,7 @@ def calculate_from_hfss(antenna_params):
 
     simulator = AdvancedHFSSEntennaSimulator(temp_folder, NG_MODE, AEDT_VERSION, NUM_CORES, antenna_params)
 
-    success, fre_value, gain_value, s_prams_min = simulator.run_full_hfss_simulation()
+    success, fre_value, gain_value, s_prams_min = simulator.run_full_hfss_simulation(train_model)
 
     if success:
         print("\n" + "="*80)

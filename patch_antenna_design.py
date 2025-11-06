@@ -345,9 +345,9 @@ class PatchAntennaDesignSystem:
         return history
 
     def optimize_antenna(self, model, target_specs, param_bounds,
-                        num_iterations=1000, learning_rate=0.01):
+                        num_iterations=1000, learning_rate=0.01,device=None):
         """
-        贴片天线参数优化
+        贴片天线参数优化（最终修复版：确保params为叶子张量，梯度正常）
 
         参数:
         model: 训练好的模型
@@ -355,29 +355,40 @@ class PatchAntennaDesignSystem:
         param_bounds: 参数边界 [[min1, max1], [min2, max2], [min3, max3], [min4, max4]]
         num_iterations: 迭代次数
         learning_rate: 学习率
-
-        返回:
-        优化后的参数和预测性能
+        device: 计算设备（GPU/CPU）
         """
-        # 验证输入
+        # 1. 强制指定设备（确保所有张量在同一设备）
+        if device is None:
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"优化使用设备: {device}")
+
+        # 2. 验证输入
         if len(target_specs) != self.output_dim:
             raise ValueError(f"目标性能指标应为 {self.output_dim} 个，实际为 {len(target_specs)}")
-
         if param_bounds.shape != (self.input_dim, 2):
-            raise ValueError(f"参数边界应为 {self.input_dim}x2 的数组")
+            raise ValueError(f"参数边界应为 {self.input_dim}x2 的数组，实际为 {param_bounds.shape}")
 
         num_params = self.input_dim
+        model = model.to(device)  # 确保模型在目标设备
 
-        # 初始化参数
-        params = torch.rand(num_params, requires_grad=True, device=self.device, dtype=torch.float32)
+        # 3. 关键修复：创建叶子张量（直接用rand创建，不经过其他运算包裹）
+        # 叶子张量要求：直接创建，不依赖其他张量的运算结果
+        params = torch.rand(num_params, dtype=torch.float32, device=device, requires_grad=True)
+        print(f"调试：初始params是否为叶子张量 = {params.is_leaf}")  # 应输出True
 
-        # 将参数映射到指定范围
-        param_bounds_tensor = torch.tensor(param_bounds, dtype=torch.float32, device=self.device)
-        for i in range(num_params):
-            params.data[i] = param_bounds_tensor[i, 0] + params.data[i] * (param_bounds_tensor[i, 1] - param_bounds_tensor[i, 0])
+        # 4. 参数映射到指定范围（用in-place操作，不改变叶子张量属性）
+        param_min = torch.tensor(param_bounds[:, 0], dtype=torch.float32, device=device)
+        param_max = torch.tensor(param_bounds[:, 1], dtype=torch.float32, device=device)
 
+        # 用in-place乘法和加法，避免创建新张量（保持叶子属性）
+        params.data = params.data * (param_max - param_min) + param_min
+        # 再次确认requires_grad=True（in-place操作不改变这个属性）
+        print(f"调试：映射后params是否为叶子张量 = {params.is_leaf}")  # 应输出True
+        print(f"调试：映射后params.requires_grad = {params.requires_grad}")  # 应输出True
+
+        # 5. 优化器（现在可以正常优化叶子张量）
         optimizer = optim.Adam([params], lr=learning_rate)
-        target_tensor = torch.tensor(target_specs, dtype=torch.float32, device=self.device)
+        target_tensor = torch.tensor(target_specs, dtype=torch.float32, device=device)
 
         best_loss = float('inf')
         best_params = None
@@ -386,38 +397,75 @@ class PatchAntennaDesignSystem:
         print("开始贴片天线参数优化...")
         print(f"目标性能: S11={target_specs[0]:.2f}dB, 频率={target_specs[1]:.2f}GHz, 增益={target_specs[2]:.2f}dBi")
 
-        for i in range(num_iterations):
-            # 归一化参数
-            params_normalized = (params - param_bounds_tensor[:, 0]) / \
-                              (param_bounds_tensor[:, 1] - param_bounds_tensor[:, 0])
+        # 6. 模型设为评估模式，禁用模型参数梯度（只优化params）
+        model.eval()
+        for p in model.parameters():
+            p.requires_grad = False
 
-            # 预测性能
+        for i in range(num_iterations):
+            # 7. 清零梯度（优化器自带方法，安全可靠）
+            optimizer.zero_grad()
+
+            # 8. 归一化参数（用torch操作，保留梯度链路）
+            # 这里的运算会创建非叶子张量，但params本身仍是叶子张量
+            params_normalized = (params - param_min) / (param_max - param_min + 1e-8)
+            params_normalized = torch.clamp(params_normalized, 0.0, 1.0)
+
+            # 9. 模型预测（无torch.no_grad()，保留梯度传播到params）
             performance = model(params_normalized.unsqueeze(0))[0]
 
-            # 计算损失 (加权损失，更关注重要的性能指标)
-            # S11权重更高，因为它对天线性能影响更大
-            weights = torch.tensor([2.0, 1.0, 1.0], device=self.device)  # S11权重更高
+            # 10. 计算加权损失
+            weights = torch.tensor([2.0, 1.0, 1.0], dtype=torch.float32, device=device)
             loss = torch.mean(weights * torch.square(performance - target_tensor))
 
-            # 反向传播和优化
-            optimizer.zero_grad()
+            # 11. 调试：验证梯度链路（仅第一次迭代）
+            if i == 0:
+                print(f"调试：performance.requires_grad = {performance.requires_grad}")  # 应输出True
+                print(f"调试：loss.requires_grad = {loss.requires_grad}")  # 应输出True
+
+            # 12. 反向传播（计算params的梯度）
             loss.backward()
+
+            # 13. 调试：验证梯度是否生成
+            if i == 0:
+                if params.grad is not None:
+                    print(f"调试：梯度计算成功！params.grad形状 = {params.grad.shape}")
+                else:
+                    print("调试：警告！params.grad为None")
+
+            # 14. 梯度裁剪（防止梯度爆炸）
+            torch.nn.utils.clip_grad_norm_([params], max_norm=1.0)
+
+            # 15. 更新参数（优化器直接更新叶子张量params）
             optimizer.step()
 
-            # 限制参数在边界内
-            for j in range(num_params):
-                params.data[j] = torch.clamp(params.data[j], param_bounds_tensor[j, 0], param_bounds_tensor[j, 1])
+            # 16. 限制参数边界（用in-place操作，保持叶子属性）
+            with torch.no_grad():  # 边界裁剪不需要梯度
+                params.clamp_(param_min, param_max)
 
-            # 更新最佳结果
-            if loss.item() < best_loss:
-                best_loss = loss.item()
+            # 17. 更新最佳结果（detach避免梯度累积）
+            current_loss = loss.item()
+            if current_loss < best_loss:
+                best_loss = current_loss
                 best_params = params.detach().cpu().numpy().copy()
                 best_performance = performance.detach().cpu().numpy().copy()
 
-            if (i + 1) % 100 == 0:
-                print(f"Iteration {i+1}/{num_iterations}, Loss: {loss.item():.6f}, "
-                      f"Best Loss: {best_loss:.6f}")
+            # 18. 打印进度
+            if (i + 1) % 100 == 0 or i == num_iterations - 1:
+                print(f"Iteration {i + 1}/{num_iterations}, Loss: {current_loss:.6f}, "
+                      f"Best Loss: {best_loss:.6f}, "
+                      f"Current S11: {performance[0].item():.2f}dB")
 
+        # 19. 恢复模型状态
+        model.train()
+        for p in model.parameters():
+            p.requires_grad = True  # 恢复模型参数的梯度计算
+
+        # 处理中文字体警告（可选，解决绘图时的字体问题）
+        plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans']  # 支持中文和特殊符号
+        plt.rcParams['axes.unicode_minus'] = False  # 支持负号
+
+        print(f"优化结束！最佳损失: {best_loss:.6f}")
         return best_params, best_performance, best_loss
 
     def visualize_results(self, history, y_true, y_pred):
