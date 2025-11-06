@@ -949,7 +949,8 @@ class PatchAntennaDesignSystem:
             param_importance = np.random.rand(self.input_dim)  # 实际应该从模型中提取
 
             for i, ax in enumerate(axes.flat):
-                if i < self.input_dim:
+                # if i < self.input_dim:
+                if i < len(self.perf_names):
                     ax.bar(range(self.input_dim), param_importance, alpha=0.7)
                     ax.set_xticks(range(self.input_dim))
                     ax.set_xticklabels(self.param_names, rotation=45, ha='right')

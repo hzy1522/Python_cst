@@ -127,8 +127,9 @@ def complete_workflow_demo():
     print("\n4. 模型训练...")
 
     # 创建模型（指定设备）
-    print("   创建CNN模型...")
-    model = system.create_model(model_type='cnn') #        model_type: 模型类型 ('mlp', 'resnet', 'cnn')
+    train_model_type = 'gnn'
+    print(f"   创建{train_model_type}模型...")
+    model = system.create_model(model_type='gnn') #        model_type: 模型类型 ('mlp', 'resnet', 'cnn')
     model = model.to(device)  # 关键修复：将模型移到GPU/CPU
     print(f"   模型设备: {next(model.parameters()).device}")
 
@@ -163,15 +164,15 @@ def complete_workflow_demo():
 
     # 6. 生成可视化结果
     print("\n6. 生成可视化结果...")
-    system.visualize_results(history, y_test_np, y_pred_test)
+    system.visualize_results(history, y_test_np, y_pred_test,model_type='gnn')
 
     # 7. 天线参数优化
     print("\n7. 天线参数优化...")
 
     # 定义设计目标（根据实际需求调整）
     target_specs = [
-        -20.0,   # S11最小值目标: -32dB (越小越好)
-        10,      # 工作频率目标: 2.45GHz (WiFi频段)
+        -15.0,   # S11最小值目标: -32dB (越小越好)
+        11,      # 工作频率目标: 2.45GHz (WiFi频段)
         7.0      # 远区场增益目标: 7.0dBi (越大越好)
     ]
 
@@ -189,7 +190,7 @@ def complete_workflow_demo():
 
     print("   参数优化边界:")
     for i, name in enumerate(system.param_names):
-        print(f"     {name}: {param_bounds[i, 0]:.1f} - {param_bounds[i, 1]:.1f}")
+        print(f"     {name}: {param_bounds[i, 0]:.3f} - {param_bounds[i, 1]:.3f}")
 
     # 执行优化
     print("   开始参数优化...")
@@ -241,7 +242,23 @@ def complete_workflow_demo():
     # 9. HFSS仿真验证（如果需要）
     print("\n9. HFSS仿真验证...")
     try:
-        simulated_performance = system.hfss_interface(optimal_params)
+        # simulated_performance = system.hfss_interface(optimal_params)
+        antenna_params_test_by_hfss = {"unit": "GHz",
+                                       "start_frequency": 5,
+                                       "stop_frequency": 15,
+                                       "center_frequency": 10,
+                                       "sweep_type": "Fast",
+                                       "ground_thickness": float(optimal_params[2]),
+                                       "signal_layer_thickness": float(optimal_params[3]),
+                                       "patch_length": float(optimal_params[0]),
+                                       "patch_width": float(optimal_params[1]),
+                                       "patch_name": "Patch",
+                                       "freq_step": "1GHz",
+                                       "num_of_freq_points": 101}
+        train_model = False
+        success, freq_at_s11_min, far_field_gain, s11_min = calculate_from_hfss_py(antenna_params_test_by_hfss,
+                                                                                   train_model)
+        simulated_performance = [s11_min, freq_at_s11_min, far_field_gain]
     except Exception as e:
         print(f"   ⚠️ HFSS仿真验证失败: {e}")
         simulated_performance = [np.nan] * len(predicted_performance)
@@ -286,7 +303,7 @@ def complete_workflow_demo():
             'rmse_scores': [np.sqrt(mean_squared_error(y_test_np[:, i], y_pred_test[:, i])) for i in range(3)]
         },
         'training_info': {
-            'model_type': 'cnn',
+            'model_type': train_model_type,
             'epochs': 250,
             'batch_size': 128,
             'training_time': training_time,
@@ -567,10 +584,10 @@ if __name__ == "__main__":
     design_report = complete_workflow_demo()
 
     # 演示2: 批量设计（可选）
-    print("\n" + "=" * 50)
-    print("正在运行批量设计演示...")
-    print("=" * 50)
-    batch_results = batch_optimization_demo()
+    # print("\n" + "=" * 50)
+    # print("正在运行批量设计演示...")
+    # print("=" * 50)
+    # batch_results = batch_optimization_demo()
 
     # 演示3: 模型比较（可选）
     # print("\n" + "=" * 50)
