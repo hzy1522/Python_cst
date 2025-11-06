@@ -163,7 +163,7 @@ class PatchAntennaDesignSystem:
         创建贴片天线设计神经网络模型
 
         参数:
-        model_type: 模型类型 ('mlp', 'resnet', 'cnn')
+        model_type: 模型类型 ('mlp', 'resnet', 'cnn', 'rnn')
 
         返回:
         神经网络模型
@@ -241,6 +241,64 @@ class PatchAntennaDesignSystem:
                 nn.Linear(64 * (self.input_dim // 4), 128),
                 nn.ReLU(),
                 nn.Linear(128, self.output_dim)
+            ).to(self.device)
+
+        elif model_type == 'rnn':
+            # 循环神经网络（使用GRU）
+            class RNNModel(nn.Module):
+                def __init__(self, input_dim, hidden_dim, output_dim, num_layers=2):
+                    super().__init__()
+                    self.hidden_dim = hidden_dim
+                    self.num_layers = num_layers
+
+                    # GRU层
+                    self.gru = nn.GRU(
+                        input_size=input_dim,
+                        hidden_size=hidden_dim,
+                        num_layers=num_layers,
+                        batch_first=True,
+                        bidirectional=True
+                    )
+
+                    # 批归一化层
+                    self.batch_norm = nn.BatchNorm1d(hidden_dim * 2)  # *2 for bidirectional
+
+                    # 全连接层
+                    self.fc1 = nn.Linear(hidden_dim * 2, 128)
+                    self.fc2 = nn.Linear(128, output_dim)
+
+                    # 激活函数和 dropout
+                    self.relu = nn.ReLU()
+                    self.dropout = nn.Dropout(0.3)
+
+                def forward(self, x):
+                    # x: (batch_size, input_dim) -> 需要转换为 (batch_size, seq_len, input_dim)
+                    # 对于静态参数预测，将 seq_len 设置为 1
+                    x = x.unsqueeze(1)  # (batch_size, 1, input_dim)
+
+                    # 初始化隐藏状态
+                    batch_size = x.size(0)
+                    h0 = torch.zeros(self.num_layers * 2, batch_size, self.hidden_dim,
+                                   device=x.device)  # *2 for bidirectional
+
+                    # GRU前向传播
+                    out, _ = self.gru(x, h0)  # out: (batch_size, seq_len, hidden_dim * 2)
+
+                    # 取最后一个时间步的输出
+                    out = out[:, -1, :]  # (batch_size, hidden_dim * 2)
+
+                    # 批归一化和全连接层
+                    out = self.batch_norm(out)
+                    out = self.dropout(self.relu(self.fc1(out)))
+                    out = self.fc2(out)
+
+                    return out
+
+            return RNNModel(
+                input_dim=self.input_dim,
+                hidden_dim=128,
+                output_dim=self.output_dim,
+                num_layers=2
             ).to(self.device)
 
         else:
@@ -345,9 +403,9 @@ class PatchAntennaDesignSystem:
         return history
 
     def optimize_antenna(self, model, target_specs, param_bounds,
-                        num_iterations=1000, learning_rate=0.01,device=None):
+                        num_iterations=1000, learning_rate=0.01, device=None):
         """
-        贴片天线参数优化（最终修复版：确保params为叶子张量，梯度正常）
+        贴片天线参数优化（修复RNN反向传播问题）
 
         参数:
         model: 训练好的模型
@@ -371,8 +429,7 @@ class PatchAntennaDesignSystem:
         num_params = self.input_dim
         model = model.to(device)  # 确保模型在目标设备
 
-        # 3. 关键修复：创建叶子张量（直接用rand创建，不经过其他运算包裹）
-        # 叶子张量要求：直接创建，不依赖其他张量的运算结果
+        # 3. 创建叶子张量（直接用rand创建，不经过其他运算包裹）
         params = torch.rand(num_params, dtype=torch.float32, device=device, requires_grad=True)
         print(f"调试：初始params是否为叶子张量 = {params.is_leaf}")  # 应输出True
 
@@ -382,7 +439,6 @@ class PatchAntennaDesignSystem:
 
         # 用in-place乘法和加法，避免创建新张量（保持叶子属性）
         params.data = params.data * (param_max - param_min) + param_min
-        # 再次确认requires_grad=True（in-place操作不改变这个属性）
         print(f"调试：映射后params是否为叶子张量 = {params.is_leaf}")  # 应输出True
         print(f"调试：映射后params.requires_grad = {params.requires_grad}")  # 应输出True
 
@@ -397,53 +453,78 @@ class PatchAntennaDesignSystem:
         print("开始贴片天线参数优化...")
         print(f"目标性能: S11={target_specs[0]:.2f}dB, 频率={target_specs[1]:.2f}GHz, 增益={target_specs[2]:.2f}dBi")
 
-        # 6. 模型设为评估模式，禁用模型参数梯度（只优化params）
-        model.eval()
+        # 6. 关键修复：对于RNN模型，不要设置为eval模式
+        # 因为CuDNN RNN在eval模式下不能进行反向传播
+        # 替代方案：手动控制dropout和batch norm的行为
+        model.train()  # 保持模型在训练模式
+        print(f"调试：模型模式 = {'训练' if model.training else '评估'}")
+
+        # 禁用模型参数的梯度计算（只优化params，不更新模型权重）
         for p in model.parameters():
             p.requires_grad = False
+            # 对于RNN层，确保在训练模式下也能正确工作
+            if isinstance(p, (nn.GRU, nn.LSTM, nn.RNN)):
+                p.flatten_parameters()  # 优化内存使用
+
+        # 特殊处理：对于batch norm层，强制使用移动平均
+        # 确保在训练模式下也能获得类似评估模式的稳定结果
+        def set_batch_norm_eval(model):
+            for module in model.modules():
+                if isinstance(module, nn.BatchNorm1d):
+                    module.eval()
+
+        # 在每次前向传播前设置batch norm为eval模式
+        set_batch_norm_eval(model)
 
         for i in range(num_iterations):
-            # 7. 清零梯度（优化器自带方法，安全可靠）
+            # 7. 清零梯度
             optimizer.zero_grad()
 
-            # 8. 归一化参数（用torch操作，保留梯度链路）
-            # 这里的运算会创建非叶子张量，但params本身仍是叶子张量
+            # 8. 归一化参数
             params_normalized = (params - param_min) / (param_max - param_min + 1e-8)
             params_normalized = torch.clamp(params_normalized, 0.0, 1.0)
 
-            # 9. 模型预测（无torch.no_grad()，保留梯度传播到params）
+            # 9. 模型预测（对于RNN，必须在训练模式下进行反向传播）
             performance = model(params_normalized.unsqueeze(0))[0]
 
             # 10. 计算加权损失
             weights = torch.tensor([2.0, 1.0, 1.0], dtype=torch.float32, device=device)
             loss = torch.mean(weights * torch.square(performance - target_tensor))
 
-            # 11. 调试：验证梯度链路（仅第一次迭代）
+            # 11. 调试信息
             if i == 0:
-                print(f"调试：performance.requires_grad = {performance.requires_grad}")  # 应输出True
-                print(f"调试：loss.requires_grad = {loss.requires_grad}")  # 应输出True
+                print(f"调试：performance.requires_grad = {performance.requires_grad}")
+                print(f"调试：loss.requires_grad = {loss.requires_grad}")
 
-            # 12. 反向传播（计算params的梯度）
-            loss.backward()
+            # 12. 反向传播（RNN必须在训练模式下）
+            try:
+                loss.backward()
+            except RuntimeError as e:
+                print(f"反向传播错误: {e}")
+                print("尝试禁用CuDNN加速...")
+                # 如果CuDNN有问题，尝试禁用
+                torch.backends.cudnn.enabled = False
+                loss.backward()
+                torch.backends.cudnn.enabled = True
 
-            # 13. 调试：验证梯度是否生成
+            # 13. 调试梯度
             if i == 0:
                 if params.grad is not None:
                     print(f"调试：梯度计算成功！params.grad形状 = {params.grad.shape}")
                 else:
                     print("调试：警告！params.grad为None")
 
-            # 14. 梯度裁剪（防止梯度爆炸）
+            # 14. 梯度裁剪
             torch.nn.utils.clip_grad_norm_([params], max_norm=1.0)
 
-            # 15. 更新参数（优化器直接更新叶子张量params）
+            # 15. 更新参数
             optimizer.step()
 
-            # 16. 限制参数边界（用in-place操作，保持叶子属性）
-            with torch.no_grad():  # 边界裁剪不需要梯度
+            # 16. 限制参数边界
+            with torch.no_grad():
                 params.clamp_(param_min, param_max)
 
-            # 17. 更新最佳结果（detach避免梯度累积）
+            # 17. 更新最佳结果
             current_loss = loss.item()
             if current_loss < best_loss:
                 best_loss = current_loss
@@ -459,11 +540,11 @@ class PatchAntennaDesignSystem:
         # 19. 恢复模型状态
         model.train()
         for p in model.parameters():
-            p.requires_grad = True  # 恢复模型参数的梯度计算
+            p.requires_grad = True
 
-        # 处理中文字体警告（可选，解决绘图时的字体问题）
-        plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans']  # 支持中文和特殊符号
-        plt.rcParams['axes.unicode_minus'] = False  # 支持负号
+        # 处理中文字体
+        plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans']
+        plt.rcParams['axes.unicode_minus'] = False
 
         print(f"优化结束！最佳损失: {best_loss:.6f}")
         return best_params, best_performance, best_loss

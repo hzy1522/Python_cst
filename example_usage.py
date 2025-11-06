@@ -377,7 +377,8 @@ def batch_optimization_demo():
     y_val = to_tensor_and_device(y_val, device)
 
     # 训练模型
-    model = system.create_model('cnn').to(device) #        model_type: 模型类型 ('mlp', 'resnet', 'cnn')
+    # model = system.create_model('cnn').to(device) #        model_type: 模型类型 ('mlp', 'resnet', 'cnn')
+    model = system.create_model('rnn').to(device)
     history = system.train_model(model, X_train, y_train, X_val, y_val, epochs=200)
 
     # 定义多个设计目标
@@ -509,7 +510,7 @@ def model_comparison_demo():
     y_val = to_tensor_and_device(y_val, device)
 
     # 比较不同模型
-    models_to_test = ['mlp', 'resnet', 'cnn']
+    models_to_test = ['mlp', 'resnet', 'cnn', 'rnn']
     comparison_results = {}
 
     for model_type in models_to_test:
@@ -568,11 +569,11 @@ if __name__ == "__main__":
     print("=" * 50)
     batch_results = batch_optimization_demo()
 
-    # # 演示3: 模型比较（可选）
-    # print("\n" + "=" * 50)
-    # print("正在运行模型比较演示...")
-    # print("=" * 50)
-    # comparison_results = model_comparison_demo()
+    # 演示3: 模型比较（可选）
+    print("\n" + "=" * 50)
+    print("正在运行模型比较演示...")
+    print("=" * 50)
+    comparison_results = model_comparison_demo()
 
     print("\n" + "=" * 70)
     print("所有演示完成！")
