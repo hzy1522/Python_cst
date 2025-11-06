@@ -385,7 +385,7 @@ def batch_optimization_demo():
         # Patch标准天线
         {
             'name': 'IoT_Miniaturized_1',
-            'targets': [-20.0, 10, 7],
+            'targets': [-14.0, 10, 7],
             'bounds': [[5, 15], [5, 15], [0.01, 0.05], [0.01, 0.05]]
         },
         # # WiFi 2.4GHz 高增益设计
@@ -429,7 +429,6 @@ def batch_optimization_demo():
         }
 
         batch_results.append(result)
-        print(f" patch_length: {optimal_params[0]}mm, patch_width:{optimal_params[1]}mm, ground_thickness:{optimal_params[2]}mm, signal_layer_thickness:{optimal_params[3]} ")
         antenna_params_test_by_hfss = {"unit": "GHz",
                                        "start_frequency": 5,
                                        "stop_frequency": 15,
@@ -445,6 +444,7 @@ def batch_optimization_demo():
         train_model = False
         success, freq_at_s11_min, far_field_gain, s11_min = calculate_from_hfss_py(antenna_params_test_by_hfss, train_model)
         if success:
+            print(f"patch_length: {optimal_params[0]}mm, patch_width:{optimal_params[1]}mm, ground_thickness:{optimal_params[2]}mm, signal_layer_thickness:{optimal_params[3]} ")
             print(f"  目标参数：S11：{target_info['targets'][0]}, 频率：{target_info['targets'][1]}, 增益：{target_info['targets'][2]}")
             print(f"  HFSS计算完成！S11: {s11_min:.2f}dB, 频率: {freq_at_s11_min:.2f}GHz, 增益: {far_field_gain:.2f}dBi")
         else:
