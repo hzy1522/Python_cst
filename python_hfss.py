@@ -13,6 +13,7 @@ import pyvista as pv
 import pandas as pd
 import json
 import re
+import pyaedt
 
 from pyvista import examples
 pv.set_jupyter_backend("trame")
@@ -73,7 +74,8 @@ class AdvancedHFSSEntennaSimulator:
             if not self.designated_unit():
                 return False
             #3. 创建贴片天线
-            if not self.design_antenna():
+            # if not self.design_antenna():
+            if not self.my_design_antenna():
                 return False
             #4. 定义解决方案设置
             if not self.solution_set():
@@ -148,35 +150,183 @@ class AdvancedHFSSEntennaSimulator:
         #贴片天线由接地层、介质基板和顶部信号层组成，贴片天线位于顶部信号层上。
         stackup = Stackup3D(self.hfss)
 
+        # ground = stackup.add_ground_layer(
+        #     "ground", material="copper", thickness=self.antenna_params["ground_thickness"], fill_material="air"
+        # )
         ground = stackup.add_ground_layer(
-            "ground", material="copper", thickness=self.antenna_params["ground_thickness"], fill_material="air"
+            "ground", material="pec", fill_material="air"
         )
+        # dielectric = stackup.add_dielectric_layer(
+        #     "dielectric", thickness="0.5" + self.length_units, material="Duroid (tm)"
+        # )
+        # 介质层
         dielectric = stackup.add_dielectric_layer(
-            "dielectric", thickness="0.5" + self.length_units, material="Duroid (tm)"
+            "dielectric", thickness=self.antenna_params["sub_high"]
         )
+        # signal = stackup.add_signal_layer(
+        #     "signal", material="copper", thickness=self.antenna_params["signal_layer_thickness"], fill_material="air"
+        # )
+
         signal = stackup.add_signal_layer(
-            "signal", material="copper", thickness=self.antenna_params["signal_layer_thickness"], fill_material="air"
+            "signal", material="pec", fill_material="air"
         )
+        # patch = signal.add_patch(
+        #     patch_length=self.antenna_params["patch_length"], patch_width=self.antenna_params["patch_width"], patch_name=self.antenna_params["patch_name"], frequency=self.antenna_params["center_frequency"]
+        # )
+        """
+                frequency,
+                patch_width,
+                patch_length=None,
+                patch_position_x=0,
+                patch_position_y=0,
+                patch_name=None,
+                axis="X",
+        """
         patch = signal.add_patch(
-            patch_length=self.antenna_params["patch_length"], patch_width=self.antenna_params["patch_width"], patch_name=self.antenna_params["patch_name"], frequency=self.antenna_params["center_frequency"]
+            patch_length=self.antenna_params["patch_length"], patch_width=self.antenna_params["patch_width"],
+            patch_name=self.antenna_params["patch_name"], frequency=self.antenna_params["center_frequency"]
         )
 
         stackup.resize_around_element(patch)
-        pad_length = [3, 3, 3, 3, 3, 3]  # Air bounding box buffer in mm.
-        region = self.hfss.modeler.create_region(pad_length, is_percentage=False)
+
+        pad_length = [40.816,40.816, 40.816, 40.816, 40.816, 40.816]  # Air bounding box buffer in mm.
+        region = self.hfss.modeler.create_region(pad_length, is_percentage=False, pad_type="Absolute Offset")
         self.hfss.assign_radiation_boundary_to_objects(region)
 
         patch.create_probe_port(ground, rel_x_offset=0.485)
         print("=" * 80)
         return True
+    def my_design_antenna(self):
+        print("=" * 80)
+        print("创建贴片天线")
+        print("贴片天线由接地层、介质基板和顶部信号层组成，贴片天线位于顶部信号层上。")
+        #创建贴片天线
+        #贴片天线由接地层、介质基板和顶部信号层组成，贴片天线位于顶部信号层上。
+        # stackup = Stackup3D(self.hfss)
+        """
+        antenna_params = {
+        "unit": "GHz",  # 单位设置
+        "start_frequency": 2,  # 起始工作频率 (GHz)
+        "stop_frequency": 3,  # 截止频率
+        "center_frequency": 2.5,  # 中心频率
+        "sweep_type": "Interpolating",  # 扫描频率设置
+        "ground_thickness": 0.035,  # 地板厚度 (mm)
+        "signal_layer_thickness": 0.035,  # 信号线厚度(mm)
+        "patch_length": 39,  # 贴片长度(mm)
+        "patch_width": 48.4,  #
+        "patch_name": "Patch",
+        "freq_step": "0.01GHz",
+        "num_of_freq_points": 201,
+        "sub_length": 50,  # 介质板长度(mm)
+        "sub_width": 60,  # 介质板宽度(mm)
+        "sub_high": 1.575,  # 介质板厚度(mm)
+        "feed_r1":0.5,
+        "feed_h":1.575,
+        "feed_center":6.3
+        lumpedport_r
+        """
+        RogersRT = self.hfss.modeler.create_box(origin=[-self.antenna_params["sub_length"]/2,
+                                                        -self.antenna_params["sub_width"]/2,
+                                                        0],
+                                      sizes=[self.antenna_params["sub_length"],
+                                             self.antenna_params["sub_width"],
+                                             self.antenna_params["sub_high"]],
+                                      name="RogersRT",
+                                      material="Rogers RT/duroid 5880 (tm)")
+        print(RogersRT.faces)
+        RogersRT.color = "Red"
+        input("回车1")
+        print("你的 pyaedt 真实版本：", pyaedt.__version__)
+        feed = self.hfss.modeler.create_cylinder(orientation="Z",
+                                                origin=[self.antenna_params["feed_center"],
+                                                        0, 0],
+                                                radius=self.antenna_params["feed_r1"],
+                                                height=self.antenna_params["feed_h"],
+                                                name="feed",
+                                                material="copper")
+        print(feed.faces)
+        input("回车2")
+        box = self.hfss.modeler["RogersRT"]
+        cyl = self.hfss.modeler["feed"]
+        box.subtract(cyl)
+        input("回车3")
+        ground = self.hfss.modeler.create_rectangle(orientation=2,
+                                                    origin=[-self.antenna_params["sub_length"]/2,
+                                                            -self.antenna_params["sub_width"]/2,
+                                                            0],
+                                                    sizes=[self.antenna_params["sub_length"],
+                                                            self.antenna_params["sub_width"]],
+                                                    name="ground",
+                                                    material="pec"
+                                                    )
+        input("回车4")
+        patch = self.hfss.modeler.create_rectangle(
+                                                    orientation=2,
+                                                    origin=[-self.antenna_params["patch_length"] / 2,
+                                                            -self.antenna_params["patch_width"] / 2,
+                                                            self.antenna_params["sub_high"]],
+                                                    sizes=[self.antenna_params["patch_length"],
+                                                           self.antenna_params["patch_width"]],
+                                                    name="patch",
+                                                    material="pec"
+                                                    )
+        input("回车5")
+        lumped_port = self.hfss.modeler.create_circle(
+                                                        orientation=2,
+                                                        origin=[self.antenna_params["feed_center"],
+                                                                  0, 0],
+                                                        radius=self.antenna_params["lumpedport_D"]/2,
+                                                        name="lumped_port",)
+        # feed_port = self.hfss.modeler.create_circle(
+        #                                                 orientation=2,
+        #                                                 origin=[self.antenna_params["feed_center"],
+        #                                                         0, 0],
+        #                                                 radius=self.antenna_params["feed_r1"],
+        #                                                 name="feed_port")
+        input("回车6")
+        create_rectangle = self.hfss.modeler["ground"]
+        lumped_port = self.hfss.modeler["lumped_port"]
+        # feed_port = self.hfss.modeler["feed_port"]
+        create_rectangle.subtract(lumped_port)
+        # lumped_port.subtract(feed_port)
 
+        input("回车7")
+        int_line = [
+            [self.antenna_params["feed_center"] + self.antenna_params["lumpedport_D"] / 2, 0, 0],  # 外导体内壁点
+            [self.antenna_params["feed_center"] + self.antenna_params["feed_r1"], 0, 0],  # 内导体表面点
+        ]
+        pad_length = [40.816, 40.816, 40.816, 40.816, 40.816, 40.816]  # Air bounding box buffer in mm.
+        region = self.hfss.modeler.create_region(pad_length, is_percentage=False, pad_type="Absolute Offset")
+        input("回车81")
+        self.hfss.assign_radiation_boundary_to_objects(region)
+        input("回车82")
+        self.hfss.assign_perfecte_to_sheets(patch)
+        # self.hfss.create_boundary(patch)
+        input("回车83")
+        # self.hfss.create_boundary(ground)
+        self.hfss.assign_perfecte_to_sheets(ground)
+        input("回车8")
+        self.hfss.lumped_port(assignment=lumped_port,
+                              reference=feed,
+                              create_port_sheet=False,
+                              port_on_plane=True,
+                              integration_line=int_line,  # 积分线沿同轴线电场方向
+                              impedance=50,
+                              name="LumpedPort",
+                              renormalize=True,
+                              terminals_rename=False)
+
+        print("=" * 80)
+        return True
     def solution_set(self):
         print("=" * 80)
         print("定义解决方案设置")
         print("频率扫描用于指定将计算散射参数的范围。")
         #定义解决方案设置
         #频率扫描用于指定将计算散射参数的范围。
-        setup = self.hfss.create_setup(name="Setup1", setup_type="HFSSDriven", Frequency="10GHz")
+        setup = self.hfss.create_setup(name="Setup1",
+                                       setup_type="HFSSDriven",
+                                       Frequency=str(self.antenna_params["center_frequency"])+self.antenna_params["unit"])
 
         setup.create_frequency_sweep(
             # unit="GHz",
@@ -243,11 +393,12 @@ class AdvancedHFSSEntennaSimulator:
         print(f"polt_data {plot_data}")
         report = self.hfss.post.create_report(plot_data)
         solution = report.get_solution_data()
-        plt = solution.plot(solution.expressions)
-        plt.show()
+        input("请按回车键继续1...")
+        # plt = solution.plot(solution.expressions)
+        # plt.show()
         print("=" * 80)
 
-        # input("请按回车键继续1...")
+        input("请按回车键继续1...")
         print("远区场辐射图")
 # --------------------------------------------------远区场辐射图-------------------------------------------------
         print("=" * 80)
@@ -924,24 +1075,32 @@ def main():
 
     antenna_params = {
         "unit": "GHz",  # 单位设置
-        "start_frequency": 8,  # 起始工作频率 (GHz)
-        "stop_frequency": 12,  # 截止频率
-        "center_frequency": 10,  # 中心频率
-        "sweep_type": "Fast",  # 扫描频率设置
+        "start_frequency": 2,  # 起始工作频率 (GHz)
+        "stop_frequency": 3,  # 截止频率
+        "center_frequency": 2.5,  # 中心频率
+        "sweep_type": "Interpolating",  # 扫描频率设置
         "ground_thickness": 0.035,  # 地板厚度 (mm)
         "signal_layer_thickness": 0.035,  # 信号线厚度(mm)
-        "patch_length": 9.57,  # 贴片长度(mm)
-        "patch_width": 9.25,  #
+        "patch_length": 39,  # 贴片长度(mm)             10-50
+        "patch_width": 48.4,  #                        10-60
         "patch_name": "Patch",
-        "freq_step": "2GHz",
-        "num_of_freq_points": 101,
+        "freq_step": "0.01GHz",
+        "num_of_freq_points": 201,
+        "sub_length": 50,  # 介质板长度(mm)
+        "sub_width": 60,  # 介质板宽度(mm)
+        "sub_high": 1.575,  # 介质板厚度(mm)
+        "feed_r1":0.5,
+        "feed_h":1.575,
+        "feed_center":6.3,
+        "lumpedport_r":1.5,
+        "lumpedport_D": 2.3/2,
     }
     # 创建临时目录
     temp_folder = tempfile.TemporaryDirectory(suffix=".ansys")
 
     simulator = AdvancedHFSSEntennaSimulator(temp_folder, NG_MODE, AEDT_VERSION, NUM_CORES, antenna_params)
-
-    success, fre_value, gain_value, s_prams_min  = simulator.run_full_hfss_simulation()
+    train_model = False
+    success, fre_value, gain_value, s_prams_min  = simulator.run_full_hfss_simulation(train_model)
 
     if success:
         print("\n" + "="*80)

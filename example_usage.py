@@ -581,13 +581,13 @@ if __name__ == "__main__":
 
     # 运行完整工作流程演示
     print("\n正在运行完整设计流程...")
-    design_report = complete_workflow_demo()
-
+    # design_report = complete_workflow_demo()
+    #
     # 演示2: 批量设计（可选）
-    # print("\n" + "=" * 50)
-    # print("正在运行批量设计演示...")
-    # print("=" * 50)
-    # batch_results = batch_optimization_demo()
+    print("\n" + "=" * 50)
+    print("正在运行批量设计演示...")
+    print("=" * 50)
+    batch_results = batch_optimization_demo()
 
     # 演示3: 模型比较（可选）
     # print("\n" + "=" * 50)
