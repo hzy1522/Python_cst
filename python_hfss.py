@@ -1,4 +1,5 @@
 import csv
+import math
 import warnings
 from datetime import datetime
 import glob
@@ -237,6 +238,19 @@ class AdvancedHFSSEntennaSimulator:
         RogersRT.color = "Red"
         # input("回车1")
         print("你的 pyaedt 真实版本：", pyaedt.__version__)
+        """
+            f_r: float,  # 目标谐振频率 (GHz)
+            L_mm: float,  # 已知贴片长度 (mm)
+            W_mm: float,  # 已知贴片宽度 (mm)
+            er: float = 2.2,  # 基板介电常数（固定为用户提供值）
+            h_mm: float = 1.575,  # 基板厚度（固定为用户提供值）
+            Z_target: float = 50  # 目标阻抗（固定为50Ω）
+        """
+        #计算探针位置
+        self.antenna_params["feed_center"]  = self.calc_probe_pos_only(self.antenna_params["center_frequency"],
+                                                   self.antenna_params["patch_width"],
+                                                   self.antenna_params["patch_length"])
+
         feed = self.hfss.modeler.create_cylinder(orientation="Z",
                                                 origin=[self.antenna_params["feed_center"],
                                                         0, 0],
@@ -1004,6 +1018,87 @@ class AdvancedHFSSEntennaSimulator:
 
         # 包装为 list[dict] 格式返回
         return [output_dict]
+
+    def calc_probe_pos_only(self,
+            f_r: float,  # 目标谐振频率 (GHz)
+            L_mm: float,  # 已知贴片长度 (mm)
+            W_mm: float,  # 已知贴片宽度 (mm)
+            er: float = 2.2,  # 基板介电常数（固定为用户提供值）
+            h_mm: float = 1.575,  # 基板厚度（固定为用户提供值）
+            # Z_target: float = 50  # 目标阻抗（固定为50Ω）
+    ) -> dict:
+        """
+        仅基于频率、贴片尺寸（L、W），计算探针馈电位置（已知基板参数和目标阻抗）
+
+        输入参数：
+            f_r: 目标频率 (GHz)
+            L_mm: 贴片长度 (mm)（用户已确定的尺寸）
+            W_mm: 贴片宽度 (mm)（用户已确定的尺寸）
+            er: 基板介电常数（默认2.2，无需修改）
+            h_mm: 基板厚度（默认1.575mm，无需修改）
+            Z_target: 目标阻抗（默认50Ω，无需修改）
+
+        返回值：
+            dict: 探针位置核心结果，包含：
+                - probe_dist_from_center_mm: 探针距贴片中心距离 (mm)
+                - probe_dist_from_edge_mm: 探针距贴片边缘距离 (mm)
+                - edge_impedance_ohm: 贴片边缘阻抗 (Ω)（中间参数）
+                - effective_permittivity: 有效介电常数（中间参数）
+        """
+        # 参数校验（仅校验用户输入的关键尺寸）
+        if f_r <= 0:
+            raise ValueError("目标频率必须大于0 GHz")
+        if L_mm <= 0 or W_mm <= 0:
+            raise ValueError("贴片长度和宽度必须大于0 mm")
+        # if L_mm < W_mm:
+        #     raise Warning("通常贴片长度L < 宽度W（主模TM₀₁₀），请确认尺寸是否颠倒")
+
+        # 单位转换（mm → m）
+        L = L_mm / 1000
+        W = W_mm / 1000
+        h = h_mm / 1000
+        c = 3e8
+
+        # W = c/(2*f_r)*math.sqrt(2/(er+1))
+        # ereff=(er+1)/2+(er-1)/2*(1+12*h/W)^(-0.5)
+        # dL=(0.412*(ereff+0.3)*(W/h+0.264)*h)/((ereff-0.258)*(W/h+0.8))
+        # Leff=c/(2*f_r*math.sqrt(ereff))
+        # L=Leff-2*dL
+        # Lgnd=L+6*h
+        # Wgnd=W+6*h
+
+        er1=(er+1)/2+(er-1)/2*(1+12*h/L)**(-0.5)
+        Xf=L/2-L/(2*math.sqrt(er1))
+
+        return Xf*1000
+
+        # # 1. 计算有效介电常数ε_eff（边缘场效应修正）
+        # ratio_h_W = h / W  # h/W比值
+        # epsilon_eff = (er + 1) / 2 + (er - 1) / 2 * (1 + 12 * ratio_h_W) ** (-0.5)
+        #
+        # # 2. 估算贴片边缘阻抗Z_in(0)（关键参数，决定探针位置）
+        # Z_in0 = (120 * math.pi / math.sqrt(epsilon_eff)) * (h / W)
+        #
+        # # 3. 计算探针距中心距离y0（核心公式）
+        # sqrt_ratio = math.sqrt(Z_target / Z_in0)
+        # # 数值稳定性处理：避免acos输入超出[-1,1]
+        # sqrt_ratio = max(0.01, min(0.99, sqrt_ratio))
+        # y0_rad = math.acos(sqrt_ratio)  # 弧度制
+        # y0 = (L / math.pi) * y0_rad  # 距中心距离（m）
+        # y0_mm = y0 * 1000  # 转换为mm
+        #
+        # # 4. 计算探针距边缘距离（贴片半长 - 距中心距离）
+        # probe_dist_from_edge = (L_mm / 2) - y0_mm
+        #
+        # # 整理结果（聚焦探针位置，保留关键中间参数）
+        # result = {
+        #     "probe_distance_from_center_mm": round(y0_mm, 2),
+        #     "probe_distance_from_edge_mm": round(probe_dist_from_edge, 2),
+        #     "edge_impedance_ohm": round(Z_in0, 1),
+        #     "effective_permittivity": round(epsilon_eff, 3)
+        # }
+
+        return y0_mm
 
 def calculate_from_hfss(antenna_params, train_model):
     print("=" * 80)
