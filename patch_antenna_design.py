@@ -1,7 +1,7 @@
 """
 基于PyTorch的贴片天线设计系统
 专门针对:
-- 输入: 贴片长宽、GND厚度、信号线厚度
+- 输入: 贴片长宽
 - 输出: S11最小值、对应频率、远区场增益
 """
 
@@ -31,14 +31,14 @@ class PatchAntennaDesignSystem:
         )
         print(f"使用设备: {self.device}")
 
-        # 系统参数
+        # 系统参数 - 修改：输入维度从4变为2
         self.scaler = StandardScaler()
         self.target_scaler = MinMaxScaler()  # 对目标值使用MinMaxScaler
-        self.input_dim = 4  # 贴片长宽、GND厚度、信号线厚度
+        self.input_dim = 2  # 只使用贴片长度和宽度
         self.output_dim = 3  # S11最小值、对应频率、远区场增益
 
-        # 参数和性能指标名称
-        self.param_names = ['贴片长度(mm)', '贴片宽度(mm)', 'GND厚度(mm)', '信号线厚度(mm)']
+        # 参数和性能指标名称 - 修改：只保留两个参数
+        self.param_names = ['贴片长度(mm)', '贴片宽度(mm)']
         self.perf_names = ['S11最小值(dB)', '对应频率(GHz)', '远区场增益(dBi)']
 
     def load_csv_data(self, csv_file, param_cols=None, perf_cols=None):
@@ -63,9 +63,9 @@ class PatchAntennaDesignSystem:
         print(f"数据形状: {df.shape}")
         print(f"列名: {list(df.columns)}")
 
-        # 如果没有指定列名，则使用默认列名
+        # 如果没有指定列名，则使用默认列名 - 修改：只使用两个参数
         if param_cols is None:
-            param_cols = ['patch_length', 'patch_width', 'gnd_thickness', 'signal_thickness']
+            param_cols = ['patch_length', 'patch_width']
             print(f"使用默认参数列名: {param_cols}")
 
         if perf_cols is None:
@@ -81,7 +81,7 @@ class PatchAntennaDesignSystem:
         X_original = df[param_cols].values
         y_original = df[perf_cols].values
 
-        # 验证数据维度
+        # 验证数据维度 - 修改：输入维度为2
         if X_original.shape[1] != self.input_dim:
             raise ValueError(f"参数列数应为 {self.input_dim}，但实际为 {X_original.shape[1]}")
 
@@ -124,18 +124,16 @@ class PatchAntennaDesignSystem:
         np.random.seed(42)
         print(f"生成合成贴片天线数据，样本数: {num_samples}")
 
-        # 贴片天线参数范围（更真实的范围）
-        patch_length = np.random.uniform(8, 25, num_samples)  # 贴片长度 8-25mm
-        patch_width = np.random.uniform(8, 25, num_samples)   # 贴片宽度 8-25mm
-        gnd_thickness = np.random.uniform(0.035, 0.1, num_samples)  # GND厚度 0.035-0.1mm
-        signal_thickness = np.random.uniform(0.017, 0.035, num_samples)  # 信号线厚度 0.017-0.035mm
+        # 贴片天线参数范围（只使用长度和宽度）
+        patch_length = np.random.uniform(10, 50, num_samples)  # 贴片长度 10-50mm
+        patch_width = np.random.uniform(10, 60, num_samples)   # 贴片宽度 10-60mm
 
-        X_original = np.column_stack([patch_length, patch_width, gnd_thickness, signal_thickness])
+        X_original = np.column_stack([patch_length, patch_width])
 
         # 更真实的性能指标计算（基于电磁学原理的改进模型）
         c = 3e8  # 光速
         epsilon_r = 4.4  # FR4介电常数
-        h = gnd_thickness * 1e-3  # 介质厚度(m)
+        h = 0.035e-3  # 介质厚度(m) - 使用标准值0.035mm
 
         # 有效介电常数计算
         epsilon_eff = (epsilon_r + 1) / 2 + (epsilon_r - 1) / 2 * (1 + 12 * h / patch_width * 1e-3) ** (-0.5)
@@ -162,8 +160,7 @@ class PatchAntennaDesignSystem:
         s11_min = np.clip(s11_min, -40, -5)  # S11范围限制在-40到-5dB
 
         # 远区场增益计算（更准确的模型）
-        gain = 2.15 + 0.01 * (patch_length + patch_width) - 20 * gnd_thickness + \
-               0.5 * np.log10(patch_length * patch_width) + np.random.normal(0, 0.4, num_samples)
+        gain = 2.15 + 0.01 * (patch_length + patch_width) + 0.5 * np.log10(patch_length * patch_width) + np.random.normal(0, 0.4, num_samples)
         gain = np.clip(gain, 1, 12)  # 增益范围限制在1-12dBi
 
         y_original = np.column_stack([s11_min, freq, gain])
@@ -192,27 +189,27 @@ class PatchAntennaDesignSystem:
         """
         if model_type == 'mlp':
             return nn.Sequential(
-                nn.Linear(self.input_dim, 256),
-                nn.BatchNorm1d(256),
+                nn.Linear(self.input_dim, 128),  # 修改：输入维度为2
+                nn.BatchNorm1d(128),
                 nn.ReLU(),
                 nn.Dropout(0.3),
 
-                nn.Linear(256, 512),
-                nn.BatchNorm1d(512),
+                nn.Linear(128, 256),
+                nn.BatchNorm1d(256),
                 nn.ReLU(),
                 nn.Dropout(0.4),
-
-                nn.Linear(512, 256),
-                nn.BatchNorm1d(256),
-                nn.ReLU(),
-                nn.Dropout(0.3),
 
                 nn.Linear(256, 128),
                 nn.BatchNorm1d(128),
                 nn.ReLU(),
+                nn.Dropout(0.3),
+
+                nn.Linear(128, 64),
+                nn.BatchNorm1d(64),
+                nn.ReLU(),
                 nn.Dropout(0.2),
 
-                nn.Linear(128, self.output_dim)
+                nn.Linear(64, self.output_dim)
             ).to(self.device)
 
         elif model_type == 'resnet':
@@ -249,21 +246,20 @@ class PatchAntennaDesignSystem:
                     return out
 
             return nn.Sequential(
-                nn.Linear(self.input_dim, 128),
-                nn.BatchNorm1d(128),
+                nn.Linear(self.input_dim, 64),  # 修改：输入维度为2
+                nn.BatchNorm1d(64),
                 nn.ReLU(),
 
+                ResidualBlock(64, 64),
+                ResidualBlock(64, 128, stride=2),
                 ResidualBlock(128, 128),
                 ResidualBlock(128, 256, stride=2),
                 ResidualBlock(256, 256),
-                ResidualBlock(256, 512, stride=2),
-                ResidualBlock(512, 512),
 
-                # 修复：移除AdaptiveAvgPool1d，直接使用全连接层
-                nn.Linear(512, 256),
+                nn.Linear(256, 128),
                 nn.ReLU(),
                 nn.Dropout(0.3),
-                nn.Linear(256, self.output_dim)
+                nn.Linear(128, self.output_dim)
             ).to(self.device)
 
         elif model_type == 'cnn':
@@ -275,31 +271,31 @@ class PatchAntennaDesignSystem:
                     # 特征提取部分
                     self.features = nn.Sequential(
                         # 第一层：扩展维度
-                        nn.Linear(input_dim, 64),
-                        nn.BatchNorm1d(64),
+                        nn.Linear(input_dim, 32),  # 修改：输入维度为2
+                        nn.BatchNorm1d(32),
                         nn.ReLU(),
                         nn.Dropout(0.2),
 
                         # 转换为卷积格式
-                        nn.Unflatten(1, (1, 64)),
+                        nn.Unflatten(1, (1, 32)),
 
                         # 卷积块1
-                        nn.Conv1d(1, 32, kernel_size=3, padding=1),
-                        nn.BatchNorm1d(32),
+                        nn.Conv1d(1, 16, kernel_size=3, padding=1),
+                        nn.BatchNorm1d(16),
                         nn.ReLU(),
                         nn.MaxPool1d(2),
 
                         # 卷积块2
-                        nn.Conv1d(32, 64, kernel_size=3, padding=1),
-                        nn.BatchNorm1d(64),
+                        nn.Conv1d(16, 32, kernel_size=3, padding=1),
+                        nn.BatchNorm1d(32),
                         nn.ReLU(),
                         nn.MaxPool1d(2),
 
                         # 卷积块3
-                        nn.Conv1d(64, 128, kernel_size=3, padding=1),
-                        nn.BatchNorm1d(128),
+                        nn.Conv1d(32, 64, kernel_size=3, padding=1),
+                        nn.BatchNorm1d(64),
                         nn.ReLU(),
-                        nn.AdaptiveMaxPool1d(8),
+                        nn.AdaptiveMaxPool1d(4),
 
                         # 展平
                         nn.Flatten()
@@ -307,22 +303,22 @@ class PatchAntennaDesignSystem:
 
                     # 分类/回归头部
                     self.head = nn.Sequential(
-                        nn.Linear(128 * 8, 512),
-                        nn.BatchNorm1d(512),
-                        nn.ReLU(),
-                        nn.Dropout(0.4),
-
-                        nn.Linear(512, 256),
+                        nn.Linear(64 * 4, 256),
                         nn.BatchNorm1d(256),
                         nn.ReLU(),
-                        nn.Dropout(0.3),
+                        nn.Dropout(0.4),
 
                         nn.Linear(256, 128),
                         nn.BatchNorm1d(128),
                         nn.ReLU(),
+                        nn.Dropout(0.3),
+
+                        nn.Linear(128, 64),
+                        nn.BatchNorm1d(64),
+                        nn.ReLU(),
                         nn.Dropout(0.2),
 
-                        nn.Linear(128, output_dim)
+                        nn.Linear(64, output_dim)
                     )
 
                 def forward(self, x):
@@ -338,12 +334,12 @@ class PatchAntennaDesignSystem:
         elif model_type == 'rnn':
             # 改进的循环神经网络
             class ImprovedRNN(nn.Module):
-                def __init__(self, input_dim, hidden_dim, output_dim, num_layers=3):
+                def __init__(self, input_dim, hidden_dim, output_dim, num_layers=2):
                     super().__init__()
                     self.hidden_dim = hidden_dim
                     self.num_layers = num_layers
 
-                    # LSTM层（比GRU更适合复杂时序关系）
+                    # LSTM层
                     self.lstm = nn.LSTM(
                         input_size=input_dim,
                         hidden_size=hidden_dim,
@@ -360,9 +356,9 @@ class PatchAntennaDesignSystem:
                     self.attention = nn.Linear(hidden_dim * 2, 1)
 
                     # 全连接层
-                    self.fc1 = nn.Linear(hidden_dim * 2, 256)
-                    self.fc2 = nn.Linear(256, 128)
-                    self.fc3 = nn.Linear(128, output_dim)
+                    self.fc1 = nn.Linear(hidden_dim * 2, 128)
+                    self.fc2 = nn.Linear(128, 64)
+                    self.fc3 = nn.Linear(64, output_dim)
 
                     # 激活函数和 dropout
                     self.relu = nn.ReLU()
@@ -397,15 +393,15 @@ class PatchAntennaDesignSystem:
 
             return ImprovedRNN(
                 input_dim=self.input_dim,
-                hidden_dim=128,
+                hidden_dim=64,
                 output_dim=self.output_dim,
-                num_layers=3
+                num_layers=2
             ).to(self.device)
 
         elif model_type == 'gnn':
             # 修复的图神经网络
             class AdvancedGNN(nn.Module):
-                def __init__(self, input_dim, output_dim, hidden_dim=64, num_layers=4, num_heads=4):
+                def __init__(self, input_dim, output_dim, hidden_dim=32, num_layers=3, num_heads=2):
                     super().__init__()
                     self.input_dim = input_dim
                     self.hidden_dim = hidden_dim
@@ -413,11 +409,10 @@ class PatchAntennaDesignSystem:
                     self.num_heads = num_heads
                     self.total_hidden_dim = hidden_dim * num_heads  # 多头注意力总维度
 
-                    # 定义更复杂的天线参数图结构
-                    # 基于电磁学原理的更详细连接关系
+                    # 定义天线参数图结构（2个节点：长度和宽度）
                     self.edge_index = torch.tensor([
-                        [0, 0, 0, 1, 1, 1, 2, 2, 3, 3],  # 源节点
-                        [1, 2, 3, 0, 2, 3, 0, 1, 0, 1]   # 目标节点
+                        [0, 1],  # 源节点
+                        [1, 0]   # 目标节点
                     ], dtype=torch.long)
 
                     # 节点特征嵌入
@@ -436,7 +431,7 @@ class PatchAntennaDesignSystem:
                         nn.Linear(2 * hidden_dim, 1) for _ in range(num_layers)
                     ])
 
-                    # 图卷积层 - 修复：输入维度改为多头注意力总维度
+                    # 图卷积层
                     self.graph_conv_layers = nn.ModuleList([
                         nn.Linear(self.total_hidden_dim, self.total_hidden_dim) for _ in range(num_layers)
                     ])
@@ -453,9 +448,9 @@ class PatchAntennaDesignSystem:
 
                     # 全局池化和输出层
                     self.global_pool = nn.AdaptiveAvgPool1d(1)
-                    self.fc1 = nn.Linear(self.total_hidden_dim, 512)
-                    self.fc2 = nn.Linear(512, 256)
-                    self.fc3 = nn.Linear(256, output_dim)
+                    self.fc1 = nn.Linear(self.total_hidden_dim, 256)
+                    self.fc2 = nn.Linear(256, 128)
+                    self.fc3 = nn.Linear(128, output_dim)
 
                     # 激活函数和正则化
                     self.relu = nn.ReLU()
@@ -527,7 +522,7 @@ class PatchAntennaDesignSystem:
                             node_features, edge_index, layer_idx
                         )
 
-                        # 图卷积操作 - 现在维度匹配了
+                        # 图卷积操作
                         conv_output = self.graph_conv_layers[layer_idx](attention_output)
 
                         # 残差连接
@@ -561,9 +556,9 @@ class PatchAntennaDesignSystem:
             return AdvancedGNN(
                 input_dim=self.input_dim,
                 output_dim=self.output_dim,
-                hidden_dim=64,
-                num_layers=4,
-                num_heads=4
+                hidden_dim=32,
+                num_layers=3,
+                num_heads=2
             ).to(self.device)
 
         else:
@@ -695,7 +690,7 @@ class PatchAntennaDesignSystem:
         参数:
         model: 训练好的模型
         target_specs: 目标性能指标 [S11最小值, 对应频率, 远区场增益]
-        param_bounds: 参数边界 [[min1, max1], [min2, max2], [min3, max3], [min4, max4]]
+        param_bounds: 参数边界 [[min1, max1], [min2, max2]] - 修改：只有两个参数
         num_iterations: 迭代次数
         learning_rate: 学习率
         device: 计算设备（GPU/CPU）
@@ -705,7 +700,7 @@ class PatchAntennaDesignSystem:
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"优化使用设备: {device}")
 
-        # 2. 验证输入
+        # 2. 验证输入 - 修改：检查参数边界维度
         if len(target_specs) != self.output_dim:
             raise ValueError(f"目标性能指标应为 {self.output_dim} 个，实际为 {len(target_specs)}")
         if param_bounds.shape != (self.input_dim, 2):
@@ -769,7 +764,6 @@ class PatchAntennaDesignSystem:
 
             # 确保性能输出是正确的形状 (3,)
             if performance.dim() != 1 or performance.shape[0] != self.output_dim:
-                # print(f"警告: 模型输出形状不正确: {performance.shape}")
                 performance = performance.view(-1)[:self.output_dim]  # 调整形状
                 if performance.shape[0] < self.output_dim:
                     # 如果输出维度不足，填充默认值
@@ -809,27 +803,25 @@ class PatchAntennaDesignSystem:
 
             # 打印进度
             if (i + 1) % 200 == 0 or i == num_iterations - 1:
-                # 反归一化显示真实值 - 修复：确保输入是2D数组
+                # 反归一化显示真实值
                 if best_performance is not None and len(best_performance) == self.output_dim:
                     try:
-                        # 使用reshape确保是2D数组
                         pred_real = self.target_scaler.inverse_transform(
                             best_performance.reshape(1, -1)
                         )[0]
                         print(f"Iteration {i + 1}/{num_iterations}, Loss: {current_loss:.6f}, "
                               f"Best Loss: {best_loss:.6f}, "
-                              f"Best S11: {pred_real[0]:.2f}dB")
+                              f"Best S11: {pred_real[0]:.2f}dB, "
+                              f"Best Gain: {pred_real[1]:.2f}dB")
                     except Exception as e:
                         print(f"反归一化错误: {e}")
-                        print(f"best_performance形状: {best_performance.shape}")
-                        print(f"best_performance值: {best_performance}")
 
         # 恢复模型状态
         model.train()
         for p in model.parameters():
             p.requires_grad = True
 
-        # 反归一化最佳性能 - 修复：确保输入是2D数组
+        # 反归一化最佳性能
         if best_performance is not None and len(best_performance) == self.output_dim:
             try:
                 best_performance_real = self.target_scaler.inverse_transform(
@@ -889,7 +881,6 @@ class PatchAntennaDesignSystem:
         plt.subplot(2, 2, 4)
         r2_scores = []
         for i in range(len(history['val_loss'])):
-            # 简化计算，实际应该用每个epoch的预测结果
             r2 = max(0, 1 - history['val_loss'][i] / np.var(y_true))
             r2_scores.append(r2)
         plt.plot(r2_scores)
@@ -945,18 +936,21 @@ class PatchAntennaDesignSystem:
 
         # 3. 参数重要性分析（针对GNN）
         if model_type == 'gnn':
-            fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+            fig, ax = plt.subplots(1, 1, figsize=(10, 6))
             param_importance = np.random.rand(self.input_dim)  # 实际应该从模型中提取
 
-            for i, ax in enumerate(axes.flat):
-                # if i < self.input_dim:
-                if i < len(self.perf_names):
-                    ax.bar(range(self.input_dim), param_importance, alpha=0.7)
-                    ax.set_xticks(range(self.input_dim))
-                    ax.set_xticklabels(self.param_names, rotation=45, ha='right')
-                    ax.set_ylabel('重要性分数')
-                    ax.set_title(f'{self.perf_names[i]} 参数重要性')
-                    ax.grid(True, alpha=0.3)
+            bars = ax.bar(range(self.input_dim), param_importance, alpha=0.7)
+            ax.set_xticks(range(self.input_dim))
+            ax.set_xticklabels(self.param_names, rotation=45, ha='right')
+            ax.set_ylabel('重要性分数')
+            ax.set_title('贴片天线参数重要性分析')
+            ax.grid(True, alpha=0.3)
+
+            # 在柱状图上添加数值标签
+            for i, bar in enumerate(bars):
+                height = bar.get_height()
+                ax.text(bar.get_x() + bar.get_width()/2., height + 0.01,
+                       f'{height:.3f}', ha='center', va='bottom')
 
             plt.tight_layout()
             plt.savefig(f'patch_antenna_results/{model_type}_param_importance.png', dpi=300, bbox_inches='tight')
@@ -979,17 +973,17 @@ class PatchAntennaDesignSystem:
         print("\n正在调用HFSS执行以下操作:")
         print("1. 创建新的HFSS项目")
         print("2. 根据参数建立贴片天线模型")
-        print("3. 设置GND结构和信号线")
+        print("3. 设置标准GND结构(0.035mm)")
         print("4. 设置仿真频率范围和边界条件")
         print("5. 运行电磁仿真")
         print("6. 提取S11参数和远区场增益")
 
         # 更真实的仿真结果模拟
-        patch_length, patch_width, gnd_thickness, signal_thickness = parameters
+        patch_length, patch_width = parameters  # 修改：只有两个参数
 
         # 基于改进的电磁学模型
         epsilon_r = 4.4
-        h = gnd_thickness * 1e-3
+        h = 0.035e-3  # 使用标准GND厚度0.035mm
         L_meters = patch_length * 1e-3
 
         # 更准确的谐振频率计算
@@ -1006,7 +1000,7 @@ class PatchAntennaDesignSystem:
         s11_min = 20 * np.log10(np.abs(reflection_coeff))
 
         # 增益计算
-        gain = 2.15 + 0.01 * (patch_length + patch_width) - 20 * gnd_thickness + 0.5 * np.log10(patch_length * patch_width)
+        gain = 2.15 + 0.01 * (patch_length + patch_width) + 0.5 * np.log10(patch_length * patch_width)
 
         # 添加一些噪声模拟实际仿真误差
         simulated_s11 = s11_min + np.random.normal(0, 0.8)
@@ -1040,7 +1034,7 @@ class PatchAntennaDesignSystem:
         else:
             print("使用合成数据进行演示")
             X_scaled, y_scaled, X_original, y_original = self.generate_synthetic_data(
-                num_samples=10000  # 增加数据量
+                num_samples=10000
             )
 
         print(f"数据集大小: {X_scaled.shape[0]} 样本")
@@ -1075,7 +1069,6 @@ class PatchAntennaDesignSystem:
             y_pred_val = y_pred_val.reshape(-1, 1)
         if y_pred_val.shape[1] != self.output_dim:
             print(f"警告: 验证集预测形状不正确: {y_pred_val.shape}")
-            # 调整形状
             if y_pred_val.shape[1] > self.output_dim:
                 y_pred_val = y_pred_val[:, :self.output_dim]
             else:
@@ -1109,7 +1102,7 @@ class PatchAntennaDesignSystem:
         for i, (name, target) in enumerate(zip(self.perf_names, target_specs)):
             print(f"  {name}: {target}")
 
-        # 参数边界
+        # 参数边界 - 修改：只有两个参数的边界
         param_min = X_original.min(axis=0)
         param_max = X_original.max(axis=0)
         param_bounds = np.column_stack([param_min, param_max])
@@ -1221,7 +1214,7 @@ if __name__ == "__main__":
         print("使用合成数据进行演示 (添加CSV文件路径作为参数可使用真实数据)")
 
         # 可以尝试不同的模型类型
-        model_type = 'gnn'  # 'mlp', 'resnet', 'cnn', 'rnn', 'gnn'
+        model_type = 'resnet'  # 'mlp', 'resnet', 'cnn', 'rnn', 'gnn'
 
         result = system.design_workflow(
             model_type=model_type,

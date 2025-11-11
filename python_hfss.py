@@ -235,7 +235,7 @@ class AdvancedHFSSEntennaSimulator:
                                       material="Rogers RT/duroid 5880 (tm)")
         print(RogersRT.faces)
         RogersRT.color = "Red"
-        input("回车1")
+        # input("回车1")
         print("你的 pyaedt 真实版本：", pyaedt.__version__)
         feed = self.hfss.modeler.create_cylinder(orientation="Z",
                                                 origin=[self.antenna_params["feed_center"],
@@ -245,11 +245,11 @@ class AdvancedHFSSEntennaSimulator:
                                                 name="feed",
                                                 material="copper")
         print(feed.faces)
-        input("回车2")
+        # input("回车2")
         box = self.hfss.modeler["RogersRT"]
         cyl = self.hfss.modeler["feed"]
         box.subtract(cyl)
-        input("回车3")
+        # input("回车3")
         ground = self.hfss.modeler.create_rectangle(orientation=2,
                                                     origin=[-self.antenna_params["sub_length"]/2,
                                                             -self.antenna_params["sub_width"]/2,
@@ -259,7 +259,7 @@ class AdvancedHFSSEntennaSimulator:
                                                     name="ground",
                                                     material="pec"
                                                     )
-        input("回车4")
+        # input("回车4")
         patch = self.hfss.modeler.create_rectangle(
                                                     orientation=2,
                                                     origin=[-self.antenna_params["patch_length"] / 2,
@@ -270,7 +270,7 @@ class AdvancedHFSSEntennaSimulator:
                                                     name="patch",
                                                     material="pec"
                                                     )
-        input("回车5")
+        # input("回车5")
         lumped_port = self.hfss.modeler.create_circle(
                                                         orientation=2,
                                                         origin=[self.antenna_params["feed_center"],
@@ -283,29 +283,29 @@ class AdvancedHFSSEntennaSimulator:
         #                                                         0, 0],
         #                                                 radius=self.antenna_params["feed_r1"],
         #                                                 name="feed_port")
-        input("回车6")
+        # input("回车6")
         create_rectangle = self.hfss.modeler["ground"]
         lumped_port = self.hfss.modeler["lumped_port"]
         # feed_port = self.hfss.modeler["feed_port"]
         create_rectangle.subtract(lumped_port)
         # lumped_port.subtract(feed_port)
 
-        input("回车7")
+        # input("回车7")
         int_line = [
             [self.antenna_params["feed_center"] + self.antenna_params["lumpedport_D"] / 2, 0, 0],  # 外导体内壁点
             [self.antenna_params["feed_center"] + self.antenna_params["feed_r1"], 0, 0],  # 内导体表面点
         ]
         pad_length = [40.816, 40.816, 40.816, 40.816, 40.816, 40.816]  # Air bounding box buffer in mm.
         region = self.hfss.modeler.create_region(pad_length, is_percentage=False, pad_type="Absolute Offset")
-        input("回车81")
+        # input("回车81")
         self.hfss.assign_radiation_boundary_to_objects(region)
-        input("回车82")
+        # input("回车82")
         self.hfss.assign_perfecte_to_sheets(patch)
         # self.hfss.create_boundary(patch)
-        input("回车83")
+        # input("回车83")
         # self.hfss.create_boundary(ground)
         self.hfss.assign_perfecte_to_sheets(ground)
-        input("回车8")
+        # input("回车8")
         self.hfss.lumped_port(assignment=lumped_port,
                               reference=feed,
                               create_port_sheet=False,
@@ -393,12 +393,12 @@ class AdvancedHFSSEntennaSimulator:
         print(f"polt_data {plot_data}")
         report = self.hfss.post.create_report(plot_data)
         solution = report.get_solution_data()
-        input("请按回车键继续1...")
+        # input("请按回车键继续1...")
         # plt = solution.plot(solution.expressions)
         # plt.show()
         print("=" * 80)
 
-        input("请按回车键继续1...")
+        # input("请按回车键继续1...")
         print("远区场辐射图")
 # --------------------------------------------------远区场辐射图-------------------------------------------------
         print("=" * 80)
@@ -485,11 +485,12 @@ class AdvancedHFSSEntennaSimulator:
 
         # input("请按回车键继续77776...")
 # --------------------------------------------------提取S最小结果并保存-------------------------------------------------
-        csv_path = glob.glob("RESULT_S/patch_patch_Plot_*.csv")
-        print(csv_path[0])
+#         csv_path = glob.glob("RESULT_S/patch_patch_Plot_*.csv")
+#         print(csv_path[0])
+        csv_path=exported_files[0]
         # min_row_data = self.find_min_in_second_column("./RESULT_S/patch_patch_Plot_36L36E.csv",
         #                                               encoding="utf-8",)
-        min_row_data = self.find_min_in_second_column(csv_path[0],encoding="utf-8", )
+        min_row_data = self.find_min_in_second_column(csv_path,encoding="utf-8", )
         # 打印结果（格式化输出，可读性强）
         if min_row_data:
             print("\n最小值所在行的完整数据（list[dict]格式）：")
@@ -506,36 +507,6 @@ class AdvancedHFSSEntennaSimulator:
                 elif key == '_最小值':
                     self.s_parms_min = value
 
-#         # 替换为你的CSV文件路径
-#         csv_file_path_list =  glob.glob("./RESULT_S/patch_patch_Plot_*.csv")
-#         csv_file_path = csv_file_path_list[0]
-#         print(csv_file_path)
-#         extreme_data = self.find_csv_extreme_rows(
-#                         csv_file_path=csv_file_path,
-#                         target_header_pattern="dB(S(Probe_Port_T1,Probe_Port_T1))",
-#                         extreme_type="min")
-#
-#         # 3. 打印结果（可选）
-#         print(f"共找到 {len(extreme_data)} 个极值行：")
-#         for i, row in enumerate(extreme_data, 1):
-#             print(f"\n=== 第{i}个极值行 ===")
-#             print(f"极值列：{row['_极值列']} | 类型：{row['_极值类型']} | 数值：{row['_极值数值']:.6f}")
-#             print("核心数据（前5列）：")
-#             count = 0
-#             for key, value in row.items():
-#                 if not key.startswith("_"):
-#                     print(f"  {key}: {value}")
-#                     count += 1
-#                     if count >= 2:
-#                         break
-
-        # 4. 保存结果
-        # self.save_extreme_dicts(
-        #     extreme_dicts=min_row_data,
-        #     output_file=output_path,
-        #     append=True,
-        #     add_separator=True
-        # )
         self.save_extreme_dicts_to_csv(
             extreme_dicts=min_row_data,
             output_file=output_path,
@@ -1079,8 +1050,8 @@ def main():
         "stop_frequency": 3,  # 截止频率
         "center_frequency": 2.5,  # 中心频率
         "sweep_type": "Interpolating",  # 扫描频率设置
-        "ground_thickness": 0.035,  # 地板厚度 (mm)
-        "signal_layer_thickness": 0.035,  # 信号线厚度(mm)
+        # "ground_thickness": 0.035,  # 地板厚度 (mm)
+        # "signal_layer_thickness": 0.035,  # 信号线厚度(mm)
         "patch_length": 39,  # 贴片长度(mm)             10-50
         "patch_width": 48.4,  #                        10-60
         "patch_name": "Patch",

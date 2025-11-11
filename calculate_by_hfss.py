@@ -13,39 +13,60 @@ class AntennaDataGenerator:
     def __init__(self):
         """初始化天线数据生成器"""
         self.param_names = [
-            'unit', 'start_frequency', 'stop_frequency', 'center_frequency',
-            'sweep_type', 'ground_thickness', 'signal_layer_thickness',
-            'patch_length', 'patch_width', 'patch_name', 'freq_step', 'num_of_freq_points'
+            'unit',  # 单位设置
+            "stop_frequency",  # 截止频率
+            'center_frequency',  # 中心频率
+            'sweep_type' , # 扫描频率设置
+            'patch_length',  # 贴片长度(mm)             10-50
+            'patch_width' , # 10-60
+            'patch_name',
+            'freq_step',
+            'num_of_freq_points',
+            'sub_length',  # 介质板长度(mm)
+            'sub_width' , # 介质板宽度(mm)
+            'sub_high', # 介质板厚度(mm)
+            'feed_r1',
+            'feed_h' ,
+            'feed_center',
+            'lumpedport_r',
+            'lumpedport_D',
+            # 'unit', 'start_frequency', 'stop_frequency', 'center_frequency',
+            # 'sweep_type', 'ground_thickness', 'signal_layer_thickness',
+            # 'patch_length', 'patch_width', 'patch_name', 'freq_step', 'num_of_freq_points'
         ]
         self.perf_names = ['s11_min', 'freq_at_s11_min', 'far_field_gain']
 
-        # 参数范围设置
+        # 参数范围设置 - 只保留需要随机生成的参数
         self.param_ranges = {
-            # 频率相关参数 (GHz)
-            'start_frequency': (8.0, 10.0),
-            'stop_frequency': (12.0, 15.0),
-            'center_frequency': (10.0, 12.0),
-
             # 物理尺寸参数 (mm)
-            'ground_thickness': (0.01, 0.05),  # 地板厚度
-            'signal_layer_thickness': (0.01, 0.05),  # 信号线厚度
-            'patch_length': (5.0, 15.0),  # 贴片长度
-            'patch_width': (5.0, 15.0),  # 贴片宽度
-
-            # 其他参数
-            'num_of_freq_points': (51, 201)  # 频率点数
+            'patch_length': (10.0, 50.0),  # 贴片长度
+            'patch_width': (10.0, 60.0),  # 贴片宽度
         }
 
-        # 固定参数
+        # 固定参数 - 包含所有不需要随机生成的参数
         self.fixed_params = {
             'unit': 'GHz',
-            'sweep_type': 'Fast',
+            'sweep_type': 'Interpolating',
             'patch_name': 'Patch',
-            'freq_step': '2GHz'
+            'freq_step': '0.01GHz',
+            'start_frequency': 2,
+            'stop_frequency': 3,
+            'center_frequency': 2.5,
+            'sub_length': 50,  # 介质板长度(mm)
+            'sub_width': 60,  # 介质板宽度(mm)
+            'sub_high': 1.575,  # 介质板厚度(mm)
+            'feed_r1': 0.5,
+            'feed_h': 1.575,
+            'feed_center': 6.3,
+            'lumpedport_r': 1.5,
+            'lumpedport_D': 2.3/2,
+            'num_of_freq_points': 201,
+            'ground_thickness': 0.035,  # 地板厚度(mm)
+            'signal_layer_thickness': 0.035,  # 信号线厚度(mm)
         }
 
         print("天线数据生成器初始化完成")
-        print("支持的参数范围:")
+        print("随机生成的参数范围:")
         for param, (min_val, max_val) in self.param_ranges.items():
             unit = 'GHz' if 'frequency' in param else 'mm' if param != 'num_of_freq_points' else ''
             print(f"  {param}: {min_val} - {max_val} {unit}")
@@ -143,15 +164,11 @@ class AntennaDataGenerator:
         # 添加固定参数
         params.update(self.fixed_params)
 
-        # 生成随机参数
+        # 只生成需要随机变化的参数
         for param, (min_val, max_val) in self.param_ranges.items():
-            if param == 'num_of_freq_points':
-                # 频率点数取整数
-                params[param] = int(np.random.uniform(min_val, max_val))
-            else:
-                params[param] = np.random.uniform(min_val, max_val)
+            params[param] = np.random.uniform(min_val, max_val)
 
-        # 确保频率范围的合理性
+        # 确保频率范围的合理性（虽然现在是固定的，但保留此检查）
         if params['start_frequency'] >= params['stop_frequency']:
             params['start_frequency'], params['stop_frequency'] = params['stop_frequency'], params['start_frequency']
 
@@ -231,12 +248,8 @@ class AntennaDataGenerator:
         # 转换为DataFrame便于统计
         df_params = pd.DataFrame(params_list)
 
-        # 参数统计
-        numeric_params = ['start_frequency', 'stop_frequency', 'center_frequency',
-                          'ground_thickness', 'signal_layer_thickness',
-                          'patch_length', 'patch_width', 'num_of_freq_points']
-
-        for param in numeric_params:
+        # 参数统计 - 只显示随机生成的参数
+        for param in self.param_ranges.keys():
             values = df_params[param].values
             print(f"{param}: 均值={values.mean():.3f}, 标准差={values.std():.3f}")
 
@@ -271,7 +284,7 @@ def Generate_test_data(num_samples):
     # 创建生成器
     generator = AntennaDataGenerator()
 
-    # 生成10个测试样本
+    # 生成测试样本
     print("\n=== 生成测试数据 ===")
     params_list, y = generator.generate_patch_param_data(
         num_samples=num_samples,
@@ -284,8 +297,14 @@ def Generate_test_data(num_samples):
     for i in range(min(3, len(params_list))):
         print(f"\n样本 {i + 1}:")
         params = params_list[i]
-        for key, value in params.items():
-            print(f"  {key}: {value}")
+        # 只显示随机生成的参数和关键固定参数
+        print(f"  随机参数:")
+        for key in generator.param_ranges.keys():
+            print(f"    {key}: {params[key]:.2f}")
+        print(f"  关键固定参数:")
+        print(f"    center_frequency: {params['center_frequency']} {params['unit']}")
+        print(f"    sub_high: {params['sub_high']}mm")
+        print(f"    feed_center: {params['feed_center']}mm")
         print(f"  性能指标: S11={y[i, 0]:.2f}dB, 频率={y[i, 1]:.2f}GHz, 增益={y[i, 2]:.2f}dBi")
 
 
@@ -307,8 +326,14 @@ def main():
     for i in range(min(3, len(params_list))):
         print(f"\n样本 {i + 1}:")
         params = params_list[i]
-        for key, value in params.items():
-            print(f"  {key}: {value}")
+        # 只显示随机生成的参数和关键固定参数
+        print(f"  随机参数:")
+        for key in generator.param_ranges.keys():
+            print(f"    {key}: {params[key]:.2f}mm")
+        print(f"  关键固定参数:")
+        print(f"    center_frequency: {params['center_frequency']} {params['unit']}")
+        print(f"    sub_high: {params['sub_high']}mm")
+        print(f"    feed_center: {params['feed_center']}mm")
         print(f"  性能指标: S11={y[i, 0]:.2f}dB, 频率={y[i, 1]:.2f}GHz, 增益={y[i, 2]:.2f}dBi")
 
 

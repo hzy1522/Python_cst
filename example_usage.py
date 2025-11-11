@@ -358,7 +358,7 @@ def batch_optimization_demo():
     print("\n2. 加载天线数据...")
 
     # 生成天线数据
-    num_samples = 500
+    num_samples = 4000
     # calculate_by_hfss.Generate_test_data(num_samples)
 
     print("合并所有数据:")
@@ -372,7 +372,7 @@ def batch_optimization_demo():
     try:
         X_scaled, y, X_original, y_original = system.load_csv_data(
             csv_file='./merged_detailed_antenna_data.csv',
-            param_cols=['patch_length', 'patch_width', 'ground_thickness', 'signal_layer_thickness'],
+            param_cols=['patch_length', 'patch_width'],
             perf_cols=['_最小值', 'Freq [GHz]', 'Gain_dB']
         )
         print(f"   数据加载完成: {X_original.shape[0]}个样本")
@@ -398,7 +398,7 @@ def batch_optimization_demo():
     # model = system.create_model('resnet').to(device)
     # model = system.create_model('cnn').to(device) #        model_type: 模型类型 ('mlp', 'resnet', 'cnn', 'rnn', 'gnn')
     # model = system.create_model('rnn').to(device)
-    model = system.create_model('gnn').to(device)
+    model = system.create_model('rnn').to(device)
     history = system.train_model(model, X_train, y_train, X_val, y_val, epochs=500)
 
     # 定义多个设计目标
@@ -406,27 +406,9 @@ def batch_optimization_demo():
         # Patch标准天线
         {
             'name': 'IoT_Miniaturized_1',
-            'targets': [-14.0, 12, 6],
-            'bounds': [[5, 15], [5, 15], [0.01, 0.05], [0.01, 0.05]]
+            'targets': [-14.0, 2.5, 6],
+            'bounds': [[10, 50], [10, 60]]
         },
-        # # WiFi 2.4GHz 高增益设计
-        # {
-        #     'name': 'WiFi_2.4GHz_HighGain',
-        #     'targets': [-30.0, 2.45, 7.5],
-        #     'bounds': [[15, 45], [15, 45], [0.8, 2.5], [0.2, 0.8]]
-        # },
-        # # WiFi 5GHz 设计
-        # {
-        #     'name': 'WiFi_5GHz_Design',
-        #     'targets': [-28.0, 5.2, 6.0],
-        #     'bounds': [[8, 25], [8, 25], [0.5, 2.0], [0.1, 0.6]]
-        # },
-        # # IoT设备小型化设计
-        # {
-        #     'name': 'IoT_Miniaturized_2',
-        #     'targets': [-25.0, 2.4, 5.0],
-        #     'bounds': [[10, 25], [10, 25], [0.5, 1.5], [0.1, 0.4]]
-        # }
     ]
 
     print(f"开始批量设计 {len(design_targets)} 个天线...")
@@ -451,21 +433,28 @@ def batch_optimization_demo():
 
         batch_results.append(result)
         antenna_params_test_by_hfss = {"unit": "GHz",
-                                       "start_frequency": 5,
-                                       "stop_frequency": 15,
-                                       "center_frequency": 10,
-                                       "sweep_type": "Fast",
-                                       "ground_thickness": float(optimal_params[2]),
-                                       "signal_layer_thickness": float(optimal_params[3]),
                                        "patch_length": float(optimal_params[0]),
                                        "patch_width": float(optimal_params[1]),
                                        "patch_name": "Patch",
-                                       "freq_step": "1GHz",
-                                       "num_of_freq_points": 101}
+                                       "freq_step": "0.01GHz",
+                                       "num_of_freq_points": 201,
+                                       "start_frequency": 2,  # 起始工作频率 (GHz)
+                                       "stop_frequency": 3,  # 截止频率
+                                       "center_frequency": 2.5,  # 中心频率
+                                       "sweep_type": "Interpolating",  # 扫描频率设置
+                                       "sub_length": 50,  # 介质板长度(mm)
+                                       "sub_width": 60,  # 介质板宽度(mm)
+                                       "sub_high": 1.575,  # 介质板厚度(mm)
+                                       "feed_r1": 0.5,
+                                       "feed_h": 1.575,
+                                       "feed_center": 6.3,
+                                       "lumpedport_r": 1.5,
+                                       "lumpedport_D": 2.3 / 2,
+                                       }
         train_model = False
         success, freq_at_s11_min, far_field_gain, s11_min = calculate_from_hfss_py(antenna_params_test_by_hfss, train_model)
         if success:
-            print(f"patch_length: {optimal_params[0]}mm, patch_width:{optimal_params[1]}mm, ground_thickness:{optimal_params[2]}mm, signal_layer_thickness:{optimal_params[3]} ")
+            print(f"patch_length: {optimal_params[0]}mm, patch_width:{optimal_params[1]}mm")
             print(f"  目标参数：S11：{target_info['targets'][0]}, 频率：{target_info['targets'][1]}, 增益：{target_info['targets'][2]}")
             print(f"  HFSS计算完成！S11: {s11_min:.2f}dB, 频率: {freq_at_s11_min:.2f}GHz, 增益: {far_field_gain:.2f}dBi")
         else:
