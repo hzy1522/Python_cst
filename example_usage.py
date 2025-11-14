@@ -402,6 +402,7 @@ def batch_optimization_demo():
     # model = system.create_model('resnet').to(device)
     # model = system.create_model('cnn').to(device) #        model_type: 模型类型 ('mlp', 'resnet', 'cnn', 'rnn', 'gnn')
     # model = system.create_model('rnn').to(device)
+    model_type='cnn'
     model = system.create_model(model_type).to(device)
     history = system.train_model(model, X_train, y_train, X_val, y_val, epochs=500)
 
@@ -742,7 +743,7 @@ if __name__ == "__main__":
     print("本系统专门用于贴片天线的深度学习设计和优化。")
     print("=" * 70)
 
-    create_antenna_data = 0
+    create_antenna_data = 10000
     gan_demo(create_antenna_data)
 
     # 运行完整工作流程演示
