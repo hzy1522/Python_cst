@@ -61,6 +61,7 @@ class AdvancedHFSSEntennaSimulator:
         # }
         self.disc_sweep = None
         self.interp_sweep = None
+        self.output_file = None
     def run_full_hfss_simulation(self, train_model):
         print("=" * 80)
         print("开始增强版微带贴片天线 HFSS 仿真流程")
@@ -113,7 +114,7 @@ class AdvancedHFSSEntennaSimulator:
             #清理
             self.temp_folder.cleanup()
 
-        return success, self.fre_value, self.gain_value, self.s_parms_min
+        return success, self.fre_value, self.gain_value, self.s_parms_min, self.output_file
 
     def start_hfss_simulation(self):
         print("=" * 80)
@@ -495,6 +496,7 @@ class AdvancedHFSSEntennaSimulator:
         csv_path=exported_files[0]
         # min_row_data = self.find_min_in_second_column("./RESULT_S/patch_patch_Plot_36L36E.csv",
         #                                               encoding="utf-8",)
+        self.output_file = csv_path
         min_row_data = self.find_min_in_second_column(csv_path,encoding="utf-8", )
         # 打印结果（格式化输出，可读性强）
         if min_row_data:
@@ -518,6 +520,7 @@ class AdvancedHFSSEntennaSimulator:
             append=True,
             append_by_column=True
         )
+        #保存完整s参数
         data_dict = self.extract_first_two_columns_to_dict(csv_path)
 
         self.save_extreme_dicts_to_csv(
@@ -1131,13 +1134,13 @@ def calculate_from_hfss(antenna_params, train_model):
 
     simulator = AdvancedHFSSEntennaSimulator(temp_folder, NG_MODE, AEDT_VERSION, NUM_CORES, antenna_params)
 
-    success, fre_value, gain_value, s_prams_min = simulator.run_full_hfss_simulation(train_model)
+    success, fre_value, gain_value, s_prams_min, output_file = simulator.run_full_hfss_simulation(train_model)
 
     if success:
         print("\n" + "="*80)
         print("天线仿真成功完成！")
         print("="*80)
-        return success, fre_value, gain_value, s_prams_min
+        return success, fre_value, gain_value, s_prams_min, output_file
     else:
         print("\n" + "="*80)
         print("天线仿真失败")
@@ -1181,7 +1184,7 @@ def main():
 
     simulator = AdvancedHFSSEntennaSimulator(temp_folder, NG_MODE, AEDT_VERSION, NUM_CORES, antenna_params)
     train_model = False
-    success, fre_value, gain_value, s_prams_min  = simulator.run_full_hfss_simulation(train_model)
+    success, fre_value, gain_value, s_prams_min, output_file  = simulator.run_full_hfss_simulation(train_model)
 
     if success:
         print("\n" + "="*80)

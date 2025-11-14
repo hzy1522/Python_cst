@@ -36,18 +36,26 @@ class PatchAntennaDesignSystem:
         self.scaler = StandardScaler()
         self.target_scaler = MinMaxScaler()
         self.input_dim = 2  # 贴片长度和宽度
-        self.output_dim = 3  # S11最小值、对应频率、远区场增益
+        # self.output_dim = 3  # S11最小值、对应频率、远区场增益
+        self.output_dim = 204  # 201个S11点 + S11最小值 + 对应频率 + 远区场增益
         self.noise_dim = 64  # GAN噪声维度
 
         # 参数和性能指标名称
         self.param_names = ['贴片长度(mm)', '贴片宽度(mm)']
-        self.perf_names = ['S11最小值(dB)', '对应频率(GHz)', '远区场增益(dBi)']
+        self.freq_points = np.linspace(2.0, 3.0, 201).tolist()
+        s11_names = [f'{freq:.3f}' for freq in self.freq_points]
+        self.perf_names = ['S11最小值(dB)', '对应频率(GHz)', '远区场增益(dBi)'] + s11_names
+        # self.perf_names = ['S11最小值(dB)', '对应频率(GHz)', '远区场增益(dBi)']
 
         # GAN相关属性
         self.generator = None
         self.discriminator = None
         self.performance_predictor = None
         self.gan_optimizers = None
+
+        self.forward_gan_optimizers = None
+        self.forward_discriminator = None
+        self.forward_generator = None
 
     def load_csv_data(self, csv_file, param_cols=None, perf_cols=None):
         """
@@ -76,8 +84,15 @@ class PatchAntennaDesignSystem:
             param_cols = ['patch_length', 'patch_width']
             print(f"使用默认参数列名: {param_cols}")
 
+        # if perf_cols is None:
+        #     perf_cols = ['s11_min', 'freq_at_s11_min', 'far_field_gain']
+        #     print(f"使用默认性能列名: {perf_cols}")
+
+        # 默认列名 - 修改为包含201个S11点
         if perf_cols is None:
-            perf_cols = ['s11_min', 'freq_at_s11_min', 'far_field_gain']
+            # 假设您的CSV文件中S11列名为 2, , ..., 3
+            s11_cols = [f'{i}:.3f' for i in self.freq_points]
+            perf_cols = s11_cols + ['s11_min', 'freq_at_s11_min', 'far_field_gain']
             print(f"使用默认性能列名: {perf_cols}")
 
         # 验证列名
@@ -166,7 +181,30 @@ class PatchAntennaDesignSystem:
                np.random.normal(0, 0.4, num_samples)
         gain = np.clip(gain, 1, 12)
 
-        y_original = np.column_stack([s11_min, freq, gain])
+        # 生成201个频率点的S11数据
+        s11_curves = []
+        frequencies = np.array(self.freq_points)
+
+        for i in range(num_samples):
+            # 生成每个样本的S11曲线，以谐振频率为中心
+            resonant_freq = freq[i]
+
+            # 生成S11曲线，中心在谐振频率处
+            s11_curve = []
+            for f in frequencies:
+                # 简化的S11模型：在谐振频率处最小，离谐振点越远值越大
+                distance_from_resonance = abs(f - resonant_freq)
+                # 使用洛伦兹函数形状模拟S11曲线
+                s11_value = s11_min[i] + 20 * (distance_from_resonance / 0.1) ** 2
+                s11_value = min(s11_value, 0)  # S11通常为负值或0
+                s11_curve.append(s11_value)
+
+            s11_curves.append(s11_curve)
+
+        s11_curves = np.array(s11_curves)
+
+        # 组合所有性能指标：201个S11点 + S11最小值 + 频率 + 增益
+        y_original = np.column_stack([s11_curves, s11_min, freq, gain])
 
         # 数据归一化
         X_scaled = self.scaler.fit_transform(X_original)
@@ -318,6 +356,84 @@ class PatchAntennaDesignSystem:
         print(f"生成器参数量: {sum(p.numel() for p in self.generator.parameters() if p.requires_grad):,}")
         print(f"判别器参数量: {sum(p.numel() for p in self.discriminator.parameters() if p.requires_grad):,}")
 
+    def create_forward_gan_models(self):
+        """创建正向预测的GAN模型（参数->性能）"""
+
+        # 生成器：输入天线参数，输出性能指标
+        class ForwardGenerator(nn.Module):
+            def __init__(self, input_dim, noise_dim, output_dim):
+                super().__init__()
+                self.network = nn.Sequential(
+                    nn.Linear(input_dim + noise_dim, 128),
+                    nn.BatchNorm1d(128),
+                    nn.ReLU(),
+                    nn.Dropout(0.3),
+
+                    nn.Linear(128, 256),
+                    nn.BatchNorm1d(256),
+                    nn.ReLU(),
+                    nn.Dropout(0.4),
+
+                    nn.Linear(256, 128),
+                    nn.BatchNorm1d(128),
+                    nn.ReLU(),
+                    nn.Dropout(0.3),
+
+                    nn.Linear(128, output_dim)
+                )
+
+            def forward(self, params, noise):
+                input_data = torch.cat([params, noise], dim=1)
+                return self.network(input_data)
+
+        # 判别器：判断(参数,性能)对是否真实
+        class ForwardDiscriminator(nn.Module):
+            def __init__(self, input_dim, output_dim):
+                super().__init__()
+                self.network = nn.Sequential(
+                    nn.Linear(input_dim + output_dim, 256),
+                    nn.LeakyReLU(0.2),
+                    nn.Dropout(0.3),
+
+                    nn.Linear(256, 128),
+                    nn.LeakyReLU(0.2),
+                    nn.Dropout(0.3),
+
+                    nn.Linear(128, 64),
+                    nn.LeakyReLU(0.2),
+                    nn.Dropout(0.2),
+
+                    nn.Linear(64, 1),
+                    nn.Sigmoid()
+                )
+
+            def forward(self, params, performances):
+                input_data = torch.cat([params, performances], dim=1)
+                return self.network(input_data)
+
+        # 创建模型
+        self.forward_generator = ForwardGenerator(
+            input_dim=self.input_dim,
+            noise_dim=self.noise_dim,
+            output_dim=self.output_dim
+        ).to(self.device)
+
+        self.forward_discriminator = ForwardDiscriminator(
+            input_dim=self.input_dim,
+            output_dim=self.output_dim
+        ).to(self.device)
+
+        # 创建优化器
+        self.forward_gan_optimizers = {
+            'generator': optim.AdamW(self.forward_generator.parameters(),
+                                    lr=0.0002, betas=(0.5, 0.999), weight_decay=1e-4),
+            'discriminator': optim.AdamW(self.forward_discriminator.parameters(),
+                                       lr=0.0001, betas=(0.5, 0.999), weight_decay=1e-4)
+        }
+        print("正向GAN模型创建完成:")
+        print(f"生成器参数量: {sum(p.numel() for p in self.forward_generator.parameters() if p.requires_grad):,}")
+        print(f"判别器参数量: {sum(p.numel() for p in self.forward_discriminator.parameters() if p.requires_grad):,}")
+
     def train_performance_predictor(self, X_train, y_train, X_val, y_val, epochs=200, batch_size=128):
         """训练性能预测器"""
         print("\n训练性能预测器...")
@@ -386,10 +502,16 @@ class PatchAntennaDesignSystem:
         print(f"性能预测器训练完成！最佳验证损失: {best_val_loss:.6f}")
         return history
 
-    def train_gan(self, X_train, y_train, epochs=5000, batch_size=128):
+    def train_gan(self, X_train, y_train, epochs=5000, batch_size=128, forward_gan=True):
         """训练GAN模型"""
-        if self.generator is None or self.discriminator is None:
-            self.create_gan_models()
+        if forward_gan == True:
+            print("正向GAN模型训练...")
+            if self.forward_generator is None or self.forward_discriminator is None:
+                self.create_forward_gan_models()
+        else:
+            print("反向GAN模型训练...")
+            if self.generator is None or self.discriminator is None:
+                self.create_gan_models()
 
         if self.performance_predictor is None:
             # 先训练性能预测器
@@ -591,6 +713,79 @@ class PatchAntennaDesignSystem:
                 all_performances.extend(predicted_perfs_denorm[best_indices])
 
         return np.array(all_designs), np.array(all_performances)
+
+    def optimize_antenna_parameters(self, target_s11, target_gain, target_frequency,
+                              bounds=None, num_iterations=1000):
+        """
+        优化天线参数以达到目标性能
+
+        参数:
+        target_s11: 目标S11值
+        target_gain: 目标增益
+        target_frequency: 目标频率
+        bounds: 参数边界 [min_length, max_length, min_width, max_width]
+        num_iterations: 优化迭代次数
+        """
+
+        if bounds is None:
+            # 使用默认边界
+            bounds = [10.0, 50.0, 10.0, 60.0]  # [min_len, max_len, min_width, max_width]
+
+        # 初始化参数
+        params = torch.rand(2, device=self.device, requires_grad=True) * \
+                 torch.tensor([bounds[1]-bounds[0], bounds[3]-bounds[2]], device=self.device) + \
+                 torch.tensor([bounds[0], bounds[2]], device=self.device)
+
+        optimizer = optim.Adam([params], lr=0.01)
+        target_performance = torch.tensor([target_s11, target_frequency, target_gain],
+                                         device=self.device)
+
+        best_loss = float('inf')
+        best_params = None
+
+        print(f"开始优化天线参数...")
+        print(f"目标性能: S11={target_s11:.2f}dB, 频率={target_frequency:.2f}GHz, 增益={target_gain:.2f}dBi")
+
+        for i in range(num_iterations):
+            optimizer.zero_grad()
+
+            # 归一化参数
+            normalized_params = (params - torch.tensor([bounds[0], bounds[2]], device=self.device)) / \
+                               (torch.tensor([bounds[1]-bounds[0], bounds[3]-bounds[2]], device=self.device))
+
+            # 生成噪声
+            noise = torch.randn(1, self.noise_dim, device=self.device)
+
+            # 预测性能
+            predicted_performance = self.forward_generator(normalized_params.unsqueeze(0), noise)
+
+            # 计算损失（加权不同性能指标）
+            weights = torch.tensor([2.0, 1.0, 1.5], device=self.device)  # S11权重最高
+            loss = torch.mean(weights * torch.square(predicted_performance[0] - target_performance))
+
+            loss.backward()
+            optimizer.step()
+
+            # 限制参数在边界内
+            with torch.no_grad():
+                params[0].clamp_(bounds[0], bounds[1])  # 长度约束
+                params[1].clamp_(bounds[2], bounds[3])  # 宽度约束
+
+            if loss.item() < best_loss:
+                best_loss = loss.item()
+                best_params = params.detach().clone()
+
+            if (i + 1) % 100 == 0:
+                print(f"Iteration {i+1}/{num_iterations}, Loss: {loss.item():.6f}")
+
+        # 反归一化最佳参数
+        final_params = best_params.cpu().numpy()
+
+        print(f"优化完成!")
+        print(f"推荐参数: 长度={final_params[0]:.2f}mm, 宽度={final_params[1]:.2f}mm")
+        print(f"最佳损失: {best_loss:.6f}")
+
+        return final_params
 
     def create_model(self, model_type='resnet'):
         """
@@ -1468,6 +1663,48 @@ class PatchAntennaDesignSystem:
             print("🎉 设计成功！该贴片天线设计满足要求。")
         else:
             print("⚠️  设计基本完成，但部分指标需要进一步优化。")
+
+
+    def predict_s11_from_dimensions(self, patch_length, patch_width):
+        """
+        使用训练好的GAN模型根据天线尺寸预测S11结果
+
+        参数:
+        system: PatchAntennaDesignSystem实例
+        patch_length: 贴片长度(mm)
+        patch_width: 贴片宽度(mm)
+
+        返回:
+        predicted_s11_curve: 201个频率点的S11值
+        s11_min: S11最小值
+        freq_at_s11_min: 对应频率
+        far_field_gain: 远区场增益
+        """
+
+        # 准备输入数据
+        params = np.array([[patch_length, patch_width]], dtype=np.float32)
+
+        # 归一化输入参数
+        params_normalized = self.scaler.transform(params)
+        params_tensor = torch.tensor(params_normalized, dtype=torch.float32, device=self.device)
+
+        # 使用性能预测器进行预测
+        self.performance_predictor.eval()
+        with torch.no_grad():
+            predicted_performance = self.performance_predictor(params_tensor)
+            predicted_performance = predicted_performance.cpu().numpy()
+
+        # 反归一化预测结果
+        predicted_performance_denorm = self.target_scaler.inverse_transform(predicted_performance)[0]
+
+        # 提取结果
+        s11_min = predicted_performance_denorm[0]
+        freq_at_s11_min = predicted_performance_denorm[1]
+        far_field_gain = predicted_performance_denorm[2]
+        s11_curve = predicted_performance_denorm[3:]  # 201个频率点的S11值
+
+        return s11_curve, s11_min, freq_at_s11_min, far_field_gain
+
 
 if __name__ == "__main__":
     # 演示使用
