@@ -448,8 +448,6 @@ class AdvancedHFSSEntennaSimulator:
 
 # --------------------------------------------------提取增益最大结果并保存-------------------------------------------------
         # 替换为你的CSV文件路径
-
-
         extreme_data = self.find_csv_extreme_rows(
             csv_file_path=csv_file_path,
             target_header_pattern=target_pattern,
@@ -470,13 +468,6 @@ class AdvancedHFSSEntennaSimulator:
                     if count >= 15:
                         break
 
-        # 4. 保存结果
-        # self.save_extreme_dicts(
-        #     extreme_dicts=extreme_data,
-        #     output_file=output_path,
-        #     append=True,
-        #     add_separator=True
-        # )
         self.save_extreme_dicts_to_csv(
             extreme_dicts=self.convert_any_dict_to_list_dict(self.antenna_params),
             output_file=output_path,
@@ -527,10 +518,60 @@ class AdvancedHFSSEntennaSimulator:
             append=True,
             append_by_column=True
         )
+        data_dict = self.extract_first_two_columns_to_dict(csv_path)
 
+        self.save_extreme_dicts_to_csv(
+            extreme_dicts=data_dict,
+            output_file=output_path,
+            append=True,
+            append_by_column=True
+        )
         # input("请按回车键继续1100...")
         print("=" * 80)
         return True
+
+    def extract_first_two_columns_to_dict(self, csv_file_path: str, encoding: str = "utf-8") -> List[
+        Dict[str, Union[str, float]]]:
+        """
+        提取CSV文件第1列和第2列数据，并保存成字典格式（第1列为key，第2列作为value）
+
+        参数:
+            csv_file_path: CSV文件路径
+            encoding: 文件编码，默认为utf-8
+
+        返回:
+            List[Dict[str, Union[str, float]]]: 包含一个字典的列表，字典以第1列作为key，第2列作为value
+        """
+        result_dict = {}
+
+        try:
+            with open(csv_file_path, "r", encoding=encoding) as f:
+                reader = csv.reader(f)
+                header = next(reader)  # 跳过表头
+
+                for row_idx, row in enumerate(reader, 2):
+                    if not row or len(row) < 2:
+                        print(f"警告：第{row_idx}行数据不完整，已跳过")
+                        continue
+
+                    key = row[0]
+                    value = row[1]
+
+                    # 尝试将value转换为float，如果失败则保持为字符串
+                    try:
+                        converted_value = float(value)
+                        result_dict[key] = converted_value
+                    except ValueError:
+                        result_dict[key] = value
+
+        except FileNotFoundError:
+            raise Exception(f"未找到CSV文件：{csv_file_path}")
+        except Exception as e:
+            raise Exception(f"读取CSV文件失败：{str(e)}")
+
+        # 返回包含一个字典的列表，符合 list[dict[str, str | float]] 格式
+        return [result_dict]
+
     def save_farfield_data_to_csv(self, data, file_name):
         # 你的原始字典数据（此处省略，替换为你的实际字典变量名即可）
         # data = 你的字典变量
@@ -585,32 +626,6 @@ class AdvancedHFSSEntennaSimulator:
             writer.writerows(csv_rows)  # 写入所有数据行
 
         print(f"CSV文件已保存！共 {len(csv_rows)} 行数据，{len(header)} 列参数。")
-
- # ----------------------------------------------不在使用 begin-------------------------------------------------
- #    def readcsv_to_dict(self, csv_file_path):
- #        # 读取CSV，仅取前2行（表头+第二行数据）
- #        df = pd.read_csv(csv_file_path, nrows=1)  # nrows=1 表示仅读取1行数据（第二行）
- #        # 转换为字典（orient="records" 按行转换，取第一个元素即为目标字典）
- #        data_dict = df.to_dict(orient="records")[0]
- #        return data_dict
- #
- #    def save_to_jsonfile(self, data_dict, output_file_path):
- #        # 保存字典到文件
- #        # 追加字典到文件末尾（每行一个JSON）
- #        with open(output_file_path, "a", encoding="utf-8") as f:
- #            # 字典转为JSON字符串，添加换行符（确保每行一个字典）
- #            json.dump(data_dict, f, ensure_ascii=False)
- #            f.write("\n")  # 换行，便于下次追加和读取
- #
- #        print(f"字典已追加到 {output_file_path} 文件末尾")
- #
- #        # 验证结果（可选）
- #        print("\n文件当前内容：")
- #        with open(output_file_path, "r", encoding="utf-8") as f:
- #            print(f.read())
- #
- #        return data_dict
-# ----------------------------------------------不在使用 end-------------------------------------------------
     def find_min_in_second_column(self, csv_file_path: str, encoding: str = "utf-8") -> Optional[List[Dict[str, Union[str, float]]]]:
 
         header: List[str] = []
