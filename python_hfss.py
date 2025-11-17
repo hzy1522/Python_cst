@@ -1124,7 +1124,7 @@ def calculate_from_hfss(antenna_params, train_model):
     print("=" * 80)
 
     # 定义常量
-    AEDT_VERSION = "2025.1"
+    AEDT_VERSION = "2025R1"
     NUM_CORES = 4
     # NG_MODE = False  # Open AEDT UI when it is launched.
     NG_MODE = True  # Not Open AEDT UI when it is launched.
@@ -1153,7 +1153,7 @@ def main():
     print("=" * 80)
 
     # 定义常量
-    AEDT_VERSION = "2025.1"
+    AEDT_VERSION = "2025R1"
     NUM_CORES = 4
     NG_MODE = False  # Open AEDT UI when it is launched.
 

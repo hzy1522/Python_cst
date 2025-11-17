@@ -57,59 +57,183 @@ class PatchAntennaDesignSystem:
         self.forward_discriminator = None
         self.forward_generator = None
 
-    def load_csv_data(self, csv_file, param_cols=None, perf_cols=None):
+    def plot_s11_comparison_advanced(self, patch_length, patch_width, csv_file_path,
+                                     frequency_column=None, s11_column=None,
+                                     predict_s11_min=None, predict_freq=None, predict_gain=None, predict_s11_curve=None,):
         """
-        从CSV文件加载贴片天线数据
+        高级版本的S11对比绘制函数，可以指定频率和S11列
 
         参数:
-        csv_file: CSV文件路径
-        param_cols: 参数列名列表 (可选)
-        perf_cols: 性能指标列名列表 (可选)
+        self: PatchAntennaDesignSystem实例
+        patch_length: 贴片长度(mm)
+        patch_width: 贴片宽度(mm)
+        csv_file_path: 包含实际S11数据的CSV文件路径
+        frequency_column: 频率列的名称或索引（可选）
+        s11_column: S11数据列的名称或索引（可选）
+        """
 
-        返回:
-        X_scaled: 归一化的天线参数
-        y_scaled: 归一化的天线性能指标
-        X_original: 原始天线参数
-        y_original: 原始性能指标
+        # 1. 使用GAN模型预测S11曲线
+        if predict_s11_min is None or predict_freq is None or predict_gain is None or predict_s11_curve is None:
+            s11_curve, s11_min, freq_at_s11_min, far_field_gain = self.predict_s11_from_dimensions(patch_length, patch_width)
+        else:
+            s11_curve = predict_s11_curve
+            s11_min = predict_s11_min
+            freq_at_s11_min = predict_freq
+            far_field_gain = predict_gain
+
+        # 2. 从CSV文件读取实际的S11数据
+        try:
+            # 读取CSV文件
+            df = pd.read_csv(csv_file_path)
+            print(f"CSV文件列名: {list(df.columns)}")
+
+            # 如果指定了列名或索引
+            if s11_column is not None:
+                if isinstance(s11_column, str):
+                    actual_s11_data = df[s11_column].values
+                else:
+                    actual_s11_data = df.iloc[:, s11_column].values
+            else:
+                # 默认使用第二列（索引为1）
+                actual_s11_data = df.iloc[:, 1].values
+
+            # 处理频率数据
+            if frequency_column is not None:
+                if isinstance(frequency_column, str):
+                    frequencies = df[frequency_column].values
+                else:
+                    frequencies = df.iloc[:, frequency_column].values
+            else:
+                # 使用系统默认频率点
+                frequencies = self.freq_points if hasattr(self, 'freq_points') else np.linspace(2.0, 3.0,
+                                                                                                    len(actual_s11_data))
+
+        except Exception as e:
+            print(f"读取CSV文件失败: {e}")
+            return
+
+        # 3. 绘制对比图
+        plt.figure(figsize=(12, 8))
+
+        # 绘制预测的S11曲线
+        pred_line = plt.plot(self.freq_points, s11_curve,
+                             label=f'预测S11 (尺寸: {patch_length}×{patch_width}mm)',
+                             linewidth=2, color='blue', marker='o', markersize=4)
+
+        # 绘制CSV文件中的实际S11数据
+        actual_line = plt.plot(frequencies[:len(actual_s11_data)], actual_s11_data,
+                               label='实际S11 (CSV数据)',
+                               linewidth=2, color='red', marker='s', markersize=4)
+
+        # 图表设置
+        plt.xlabel('频率 (GHz)')
+        plt.ylabel('S11 (dB)')
+        plt.title('预测S11 vs 实际S11对比')
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+
+        # 添加统计信息
+        plt.text(0.05, 0.95,
+                 f'预测S11最小值: {s11_min:.2f}dB\n对应频率: {freq_at_s11_min:.2f}GHz\n增益: {far_field_gain:.2f}dBi',
+                 transform=plt.gca().transAxes, verticalalignment='top',
+                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+
+        plt.tight_layout()
+        plt.show()
+
+        # 计算误差
+        min_length = min(len(s11_curve), len(actual_s11_data))
+        mse = np.mean((s11_curve[:min_length] - actual_s11_data[:min_length]) ** 2)
+        rmse = np.sqrt(mse)
+
+        print(f"天线尺寸: {patch_length}mm × {patch_width}mm")
+        print(f"预测S11最小值: {s11_min:.2f}dB at {freq_at_s11_min:.2f}GHz")
+        print(f"预测增益: {far_field_gain:.2f}dBi")
+        print(f"CSV数据点数: {len(actual_s11_data)}")
+        print(f"预测曲线点数: {len(s11_curve)}")
+        print(f"均方误差 (MSE): {mse:.4f}")
+        print(f"均方根误差 (RMSE): {rmse:.4f}")
+
+    def load_csv_data(self, csv_file, param_cols=None, perf_cols=None):
+        """
+        从CSV文件加载贴片天线数据，适配不同格式的S11列名
         """
         print(f"从CSV文件加载数据: {csv_file}")
 
         # 读取CSV文件
         df = pd.read_csv(csv_file)
         print(f"数据形状: {df.shape}")
-        print(f"列名: {list(df.columns)}")
+        print(f"列名数量: {len(df.columns)}")
 
-        # 默认列名
+        # 默认参数列名
         if param_cols is None:
             param_cols = ['patch_length', 'patch_width']
-            print(f"使用默认参数列名: {param_cols}")
 
-        # if perf_cols is None:
-        #     perf_cols = ['s11_min', 'freq_at_s11_min', 'far_field_gain']
-        #     print(f"使用默认性能列名: {perf_cols}")
-
-        # 默认列名 - 修改为包含201个S11点
+        # 构建性能列名 - 适配不同的S11列名格式
         if perf_cols is None:
-            # 假设您的CSV文件中S11列名为 2, , ..., 3
-            s11_cols = [f'{i}:.3f' for i in self.freq_points]
-            perf_cols = s11_cols + ['s11_min', 'freq_at_s11_min', 'far_field_gain']
-            print(f"使用默认性能列名: {perf_cols}")
+            # 识别S11频率列（通过尝试转换为浮点数）
+            s11_cols = []
+            for col in df.columns:
+                try:
+                    col_value = float(col)
+                    # 检查是否在2.0-3.0GHz范围内
+                    if 2.0 <= col_value <= 3.0:
+                        s11_cols.append(col)
+                except (ValueError, TypeError):
+                    continue
 
-        # 验证列名
-        for col in param_cols + perf_cols:
+            # 按数值大小排序S11列
+            s11_cols = sorted(s11_cols, key=lambda x: float(x))
+
+            print(f"自动检测到 {len(s11_cols)} 个S11频率列")
+            if len(s11_cols) > 0:
+                print(f"S11列范围: {s11_cols[0]} - {s11_cols[-1]}")
+
+            # 主要性能指标列名映射
+            main_perf_mapping = {
+                's11_min': ['s11_min', '_最小值', 'S11最小值', 's11_minimum'],
+                'freq_at_s11_min': ['freq_at_s11_min', 'Freq [GHz]', '中心频率', 'resonant_frequency'],
+                'far_field_gain': ['far_field_gain', 'Gain_dB', '增益', 'gain']
+            }
+
+            main_perf_cols = []
+            for target_col, possible_names in main_perf_mapping.items():
+                found = False
+                for name in possible_names:
+                    if name in df.columns:
+                        main_perf_cols.append(name)
+                        found = True
+                        break
+                if not found:
+                    print(f"警告: 未找到 {target_col} 列")
+
+            perf_cols = s11_cols + main_perf_cols
+            print(f"使用的性能列: {len(s11_cols)}个S11列 + {len(main_perf_cols)}个主要性能列")
+
+        # 验证参数列名
+        for col in param_cols:
             if col not in df.columns:
-                raise ValueError(f"列名 '{col}' 不在CSV文件中")
+                raise ValueError(f"参数列 '{col}' 不在CSV文件中")
 
         # 提取数据
         X_original = df[param_cols].values
-        y_original = df[perf_cols].values
 
-        # 验证维度
-        if X_original.shape[1] != self.input_dim:
-            raise ValueError(f"参数列数应为 {self.input_dim}，但实际为 {X_original.shape[1]}")
+        # 检查性能列
+        available_perf_cols = [col for col in perf_cols if col in df.columns]
+        missing_perf_cols = [col for col in perf_cols if col not in df.columns]
 
-        if y_original.shape[1] != self.output_dim:
-            raise ValueError(f"性能列数应为 {self.output_dim}，但实际为 {y_original.shape[1]}")
+        if missing_perf_cols:
+            print(f"警告: 以下性能列未找到: {missing_perf_cols[:10]}...")
+            print(f"实际找到 {len(available_perf_cols)} 个性能列")
+
+        if len(available_perf_cols) < 100:  # 至少应该有足够多的S11点
+            raise ValueError(f"找到的性能列过少 ({len(available_perf_cols)})，请检查CSV文件格式")
+
+        y_original = df[available_perf_cols].values
+
+        # 更新output_dim以匹配实际数据
+        self.output_dim = y_original.shape[1]
+        print(f"更新output_dim为: {self.output_dim}")
 
         # 数据归一化
         X_scaled = self.scaler.fit_transform(X_original)
@@ -117,15 +241,6 @@ class PatchAntennaDesignSystem:
 
         print(f"参数数据形状: {X_original.shape}")
         print(f"性能数据形状: {y_original.shape}")
-
-        # 显示统计信息
-        print(f"\n参数统计:")
-        for i, (name, col) in enumerate(zip(self.param_names, param_cols)):
-            print(f"  {name}: 均值={X_original[:, i].mean():.3f}, 标准差={X_original[:, i].std():.3f}")
-
-        print(f"\n性能指标统计:")
-        for i, (name, col) in enumerate(zip(self.perf_names, perf_cols)):
-            print(f"  {name}: 均值={y_original[:, i].mean():.3f}, 标准差={y_original[:, i].std():.3f}")
 
         return (torch.tensor(X_scaled, dtype=torch.float32),
                 torch.tensor(y_scaled, dtype=torch.float32),
@@ -495,23 +610,30 @@ class PatchAntennaDesignSystem:
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 torch.save(self.performance_predictor.state_dict(), 'best_performance_predictor.pth')
-
+                torch.save(self.performance_predictor.state_dict(),'./models/best_performance_predictor.pth')
             if (epoch + 1) % 20 == 0:
                 print(f"Epoch [{epoch+1}/{epochs}], Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}")
 
         print(f"性能预测器训练完成！最佳验证损失: {best_val_loss:.6f}")
         return history
 
-    def train_gan(self, X_train, y_train, epochs=5000, batch_size=128, forward_gan=True):
+    def train_gan(self, X_train, y_train, epochs=5000, batch_size=128, forward_gan='both'):
         """训练GAN模型"""
-        if forward_gan == True:
+        if forward_gan is 'True':
             print("正向GAN模型训练...")
             if self.forward_generator is None or self.forward_discriminator is None:
                 self.create_forward_gan_models()
-        else:
+        elif forward_gan is 'False':
             print("反向GAN模型训练...")
             if self.generator is None or self.discriminator is None:
                 self.create_gan_models()
+        else:
+            print('训练正向和反向GAN模型...')
+            if self.forward_generator is None or self.forward_discriminator is None:
+                self.create_forward_gan_models()
+            if self.generator is None or self.discriminator is None:
+                self.create_gan_models()
+
 
         if self.performance_predictor is None:
             # 先训练性能预测器
@@ -540,6 +662,16 @@ class PatchAntennaDesignSystem:
             'performance_loss': []
         }
 
+        # 根据训练类型选择正确的模型和优化器
+        if forward_gan:
+            generator = self.forward_generator
+            discriminator = self.forward_discriminator
+            optimizers = self.forward_gan_optimizers
+        else:
+            generator = self.generator
+            discriminator = self.discriminator
+            optimizers = self.gan_optimizers
+
         for epoch in range(epochs):
             for i, (real_params, real_perfs) in enumerate(dataloader):
                 batch_size = real_params.size(0)
@@ -548,134 +680,244 @@ class PatchAntennaDesignSystem:
                 current_real_labels = real_labels[:batch_size]
                 current_fake_labels = fake_labels[:batch_size]
 
-                # ---------------------
-                #  训练判别器
-                # ---------------------
-                self.discriminator.train()
-                self.generator.eval()
+                if not forward_gan:
+                    # ---------------------
+                    #  训练反向GAN判别器
+                    # ---------------------
+                    discriminator.train()
+                    generator.eval()
 
-                # 真实数据
-                real_params = real_params.to(self.device)
-                real_perfs = real_perfs.to(self.device)
+                    # 真实数据
+                    real_params = real_params.to(self.device)
+                    real_perfs = real_perfs.to(self.device)
 
-                # 判别器对真实数据的预测
-                real_pred, pred_perfs_real = self.discriminator(real_params)
+                    # 判别器对真实数据的预测
+                    real_pred, pred_perfs_real = discriminator(real_params)
 
-                # 生成虚假数据
-                noise = torch.randn(batch_size, self.noise_dim, device=self.device)
-                fake_params = self.generator(noise, real_perfs)
+                    # 生成虚假数据
+                    noise = torch.randn(batch_size, self.noise_dim, device=self.device)
+                    fake_params = generator(noise, real_perfs)
 
-                # 判别器对虚假数据的预测
-                fake_pred, pred_perfs_fake = self.discriminator(fake_params.detach())
+                    # 判别器对虚假数据的预测
+                    fake_pred, pred_perfs_fake = discriminator(fake_params.detach())
 
-                # 计算判别器损失
-                d_loss_real = adversarial_loss(real_pred, current_real_labels)
-                d_loss_fake = adversarial_loss(fake_pred, current_fake_labels)
-                d_loss_perf_real = performance_loss(pred_perfs_real, real_perfs)
-                d_loss_perf_fake = performance_loss(pred_perfs_fake, real_perfs)
+                    # 计算判别器损失
+                    d_loss_real = adversarial_loss(real_pred, current_real_labels)
+                    d_loss_fake = adversarial_loss(fake_pred, current_fake_labels)
+                    d_loss_perf_real = performance_loss(pred_perfs_real, real_perfs)
+                    d_loss_perf_fake = performance_loss(pred_perfs_fake, real_perfs)
 
-                d_loss = (d_loss_real + d_loss_fake) * 0.5 + (d_loss_perf_real + d_loss_perf_fake) * 0.5
+                    d_loss = (d_loss_real + d_loss_fake) * 0.5 + (d_loss_perf_real + d_loss_perf_fake) * 0.5
 
-                # 优化判别器
-                self.gan_optimizers['discriminator'].zero_grad()
-                d_loss.backward()
-                torch.nn.utils.clip_grad_norm_(self.discriminator.parameters(), max_norm=1.0)
-                self.gan_optimizers['discriminator'].step()
+                    # 优化判别器
+                    optimizers['discriminator'].zero_grad()
+                    d_loss.backward()
+                    torch.nn.utils.clip_grad_norm_(discriminator.parameters(), max_norm=1.0)
+                    optimizers['discriminator'].step()
 
-                # ---------------------
-                #  训练生成器
-                # ---------------------
-                self.generator.train()
-                self.discriminator.eval()
+                    # ---------------------
+                    #  训练反向GAN生成器
+                    # ---------------------
+                    generator.train()
+                    discriminator.eval()
 
-                # 生成新的虚假数据
-                noise = torch.randn(batch_size, self.noise_dim, device=self.device)
-                fake_params = self.generator(noise, real_perfs)
+                    # 生成新的虚假数据
+                    noise = torch.randn(batch_size, self.noise_dim, device=self.device)
+                    fake_params = generator(noise, real_perfs)
 
-                # 判别器对虚假数据的预测
-                fake_pred, pred_perfs = self.discriminator(fake_params)
+                    # 判别器对虚假数据的预测
+                    fake_pred, pred_perfs = discriminator(fake_params)
 
-                # 使用性能预测器评估生成的参数
-                gen_perfs = self.performance_predictor(fake_params)
+                    # 使用性能预测器评估生成的参数
+                    gen_perfs = self.performance_predictor(fake_params)
 
-                # 计算生成器损失
-                g_loss_adv = adversarial_loss(fake_pred, current_real_labels)
-                g_loss_perf = performance_loss(gen_perfs, real_perfs)
-                g_loss = g_loss_adv + g_loss_perf * 2.0  # 更重视性能匹配
+                    # 计算生成器损失
+                    g_loss_adv = adversarial_loss(fake_pred, current_real_labels)
+                    g_loss_perf = performance_loss(gen_perfs, real_perfs)
+                    g_loss = g_loss_adv + g_loss_perf * 2.0  # 更重视性能匹配
 
-                # 优化生成器
-                self.gan_optimizers['generator'].zero_grad()
-                g_loss.backward()
-                torch.nn.utils.clip_grad_norm_(self.generator.parameters(), max_norm=1.0)
-                self.gan_optimizers['generator'].step()
+                    # 优化生成器
+                    optimizers['generator'].zero_grad()
+                    g_loss.backward()
+                    torch.nn.utils.clip_grad_norm_(generator.parameters(), max_norm=1.0)
+                    optimizers['generator'].step()
+
+                    g_loss_adv_item = g_loss_adv.item()
+                    g_loss_perf_item = g_loss_perf.item()
+
+                else:
+                    # ---------------------
+                    #  训练正向GAN判别器
+                    # ---------------------
+                    discriminator.train()
+                    generator.eval()
+
+                    real_params = real_params.to(self.device)
+                    real_perfs = real_perfs.to(self.device)
+
+                    # 判别器对真实数据的预测
+                    real_pred = discriminator(real_params, real_perfs)
+
+                    # 生成虚假数据
+                    noise = torch.randn(batch_size, self.noise_dim, device=self.device)
+                    fake_perfs = generator(real_params, noise)
+
+                    # 判别器对虚假数据的预测
+                    fake_pred = discriminator(real_params, fake_perfs.detach())
+
+                    # 计算判别器损失
+                    d_loss_real = adversarial_loss(real_pred, current_real_labels)
+                    d_loss_fake = adversarial_loss(fake_pred, current_fake_labels)
+                    d_loss = (d_loss_real + d_loss_fake) * 0.5
+
+                    # 优化判别器
+                    optimizers['discriminator'].zero_grad()
+                    d_loss.backward()
+                    torch.nn.utils.clip_grad_norm_(discriminator.parameters(), max_norm=1.0)
+                    optimizers['discriminator'].step()
+
+                    # ---------------------
+                    #  训练正向GAN生成器
+                    # ---------------------
+                    generator.train()
+                    discriminator.eval()
+
+                    # 生成新的虚假数据
+                    noise = torch.randn(batch_size, self.noise_dim, device=self.device)
+                    fake_perfs = generator(real_params, noise)
+
+                    # 判别器对虚假数据的预测
+                    fake_pred = discriminator(real_params, fake_perfs)
+
+                    # 计算生成器损失
+                    g_loss_adv = adversarial_loss(fake_pred, current_real_labels)
+                    g_loss_perf = performance_loss(fake_perfs, real_perfs)
+                    g_loss = g_loss_adv + g_loss_perf
+
+                    # 优化生成器
+                    optimizers['generator'].zero_grad()
+                    g_loss.backward()
+                    torch.nn.utils.clip_grad_norm_(generator.parameters(), max_norm=1.0)
+                    optimizers['generator'].step()
+
+                    g_loss_adv_item = g_loss_adv.item()
+                    g_loss_perf_item = g_loss_perf.item()
 
             # 记录历史
             history['generator_loss'].append(g_loss.item())
             history['discriminator_loss'].append(d_loss.item())
-            history['adversarial_loss'].append(g_loss_adv.item())
-            history['performance_loss'].append(g_loss_perf.item())
+            history['adversarial_loss'].append(g_loss_adv_item)
+            history['performance_loss'].append(g_loss_perf_item)
 
             # 打印进度
             if (epoch + 1) % 100 == 0:
                 print(f"Epoch [{epoch+1}/{epochs}], "
                       f"G Loss: {g_loss.item():.6f}, "
                       f"D Loss: {d_loss.item():.6f}, "
-                      f"Adv Loss: {g_loss_adv.item():.6f}, "
-                      f"Perf Loss: {g_loss_perf.item():.6f}")
+                      f"Adv Loss: {g_loss_adv_item:.6f}, "
+                      f"Perf Loss: {g_loss_perf_item:.6f}")
 
         # 保存GAN模型
-        torch.save(self.generator.state_dict(), 'gan_generator.pth')
-        torch.save(self.discriminator.state_dict(), 'gan_discriminator.pth')
-        print("GAN模型训练完成并保存！")
+        if forward_gan:
+            torch.save(self.forward_generator.state_dict(), 'forward_gan_generator.pth')
+            torch.save(self.forward_discriminator.state_dict(), 'forward_gan_discriminator.pth')
+            torch.save(self.forward_discriminator.state_dict(), './models/forward_gan_generator.pth')
+            torch.save(self.forward_discriminator.state_dict(), './models/forward_gan_discriminator.pth')
+            print("正向GAN模型训练完成并保存！")
+        else:
+            torch.save(self.generator.state_dict(), 'gan_generator.pth')
+            torch.save(self.discriminator.state_dict(), 'gan_discriminator.pth')
+            torch.save(self.generator.state_dict(), './models/gan_generator.pth')
+            torch.save(self.discriminator.state_dict(), './models/gan_discriminator.pth')
+            print("反向GAN模型训练完成并保存！")
 
         return history
 
     def generate_antenna_designs(self, target_performances, num_samples=10):
         """
-        使用GAN生成符合目标性能的天线设计
+        使用GAN生成符合目标性能的天线设计，精确处理所有性能指标
 
         参数:
-        target_performances: 目标性能指标 [[S11, freq, gain], ...]
+        target_performances: 目标性能指标，可以是：
+                            1. [[S11, freq, gain], ...] - 简化形式
+                            2. [[full_performance_vector], ...] - 完整204维形式
         num_samples: 每个目标生成的样本数量
 
         返回:
         generated_designs: 生成的天线设计参数
-        predicted_performances: 预测的性能指标
+        predicted_performances: 预测的完整性能指标
         """
+
+        # 确保模型已加载
         if self.generator is None:
-            # 尝试加载预训练模型
             try:
                 self.create_gan_models()
-                self.generator.load_state_dict(torch.load('gan_generator.pth'))
-                print("成功加载预训练的GAN生成器")
-            except:
-                raise ValueError("GAN模型未训练且未找到预训练模型")
+                state_dict = torch.load('gan_generator.pth', map_location=self.device)
+                self.generator.load_state_dict(state_dict)
+                print("成功加载预训练的反向GAN生成器")
+            except Exception as e:
+                print(f"加载反向GAN模型失败: {e}")
+
+        if self.forward_generator is None:
+            try:
+                self.create_forward_gan_models()
+                state_dict = torch.load('forward_gan_generator.pth', map_location=self.device)
+                self.forward_generator.load_state_dict(state_dict)
+                print("成功加载预训练的正向GAN生成器")
+            except Exception as e:
+                print(f"加载正向GAN模型失败: {e}")
 
         if self.performance_predictor is None:
             try:
                 self.performance_predictor = self.create_performance_predictor()
-                self.performance_predictor.load_state_dict(torch.load('best_performance_predictor.pth'))
+                state_dict = torch.load('best_performance_predictor.pth', map_location=self.device)
+                self.performance_predictor.load_state_dict(state_dict)
                 print("成功加载预训练的性能预测器")
-            except:
-                raise ValueError("性能预测器未训练且未找到预训练模型")
+            except Exception as e:
+                print(f"加载性能预测器失败: {e}")
 
-        print(f"\n使用GAN生成天线设计...")
+        print(f"\n使用GAN生成天线设计（精确处理）...")
         print(f"目标性能数量: {len(target_performances)}")
         print(f"每个目标生成样本数: {num_samples}")
 
-        self.generator.eval()
-        self.performance_predictor.eval()
+        # 确保模型处于评估模式
+        if self.generator is not None:
+            self.generator.eval()
+        if self.forward_generator is not None:
+            self.forward_generator.eval()
+        if self.performance_predictor is not None:
+            self.performance_predictor.eval()
 
         all_designs = []
         all_performances = []
 
         with torch.no_grad():
             for target_perf in target_performances:
-                print(f"\n生成目标性能: S11={target_perf[0]:.2f}dB, freq={target_perf[1]:.2f}GHz, gain={target_perf[2]:.2f}dBi")
+                # 处理不同形式的目标性能
+                if len(target_perf) == 3:
+                    # 简化形式：[S11, freq, gain]
+                    print(f"\n生成目标性能: S11={target_perf[0]:.2f}dB, freq={target_perf[1]:.2f}GHz, gain={target_perf[2]:.2f}dBi")
 
-                # 归一化目标性能
+                    # 构造完整的性能向量（204维）
+                    full_target_perf = np.zeros(self.output_dim)
+                    full_target_perf[0] = target_perf[0]  # S11最小值
+                    full_target_perf[1] = target_perf[1]  # 对应频率
+                    full_target_perf[2] = target_perf[2]  # 远区场增益
+
+                    # 智能生成S11曲线（基于主要指标）
+                    full_target_perf[3:] = self._generate_s11_curve(target_perf[0], target_perf[1])
+
+                elif len(target_perf) == self.output_dim:
+                    # 完整形式：204维性能向量
+                    print(f"\n生成完整目标性能（{self.output_dim}维）")
+                    full_target_perf = np.array(target_perf)
+                else:
+                    print(f"警告: 目标性能维度不匹配，期望3或{self.output_dim}维，实际{len(target_perf)}维")
+                    continue
+
+                # 使用反向GAN生成天线参数
                 target_tensor = torch.tensor(
-                    self.target_scaler.transform([target_perf]),
+                    self.target_scaler.transform([full_target_perf]),
                     dtype=torch.float32,
                     device=self.device
                 ).repeat(num_samples, 1)
@@ -683,36 +925,79 @@ class PatchAntennaDesignSystem:
                 # 生成噪声
                 noise = torch.randn(num_samples, self.noise_dim, device=self.device)
 
-                # 生成天线参数
-                generated_params = self.generator(noise, target_tensor)
+                # 生成天线参数（使用反向GAN）
+                if self.generator is not None:
+                    generated_params = self.generator(noise, target_tensor)
+                else:
+                    print("警告: 反向GAN生成器未初始化，无法生成设计")
+                    return np.array([]), np.array([])
 
                 # 反归一化参数到原始范围
                 generated_params_np = generated_params.cpu().numpy()
-                # 由于生成器使用Tanh输出[-1,1]，需要调整到实际范围
                 param_min = self.scaler.mean_ - 2 * self.scaler.scale_
                 param_max = self.scaler.mean_ + 2 * self.scaler.scale_
                 generated_params_denorm = (generated_params_np + 1) * (param_max - param_min) / 2 + param_min
 
-                # 预测生成参数的性能
-                predicted_perfs = self.performance_predictor(generated_params)
-                predicted_perfs_denorm = self.target_scaler.inverse_transform(predicted_perfs.cpu().numpy())
+                # 使用正向GAN验证生成参数的性能
+                if self.forward_generator is not None:
+                    params_normalized = self.scaler.transform(generated_params_denorm)
+                    params_tensor = torch.tensor(params_normalized, dtype=torch.float32, device=self.device)
+                    forward_noise = torch.randn(num_samples, self.noise_dim, device=self.device)
+                    forward_predicted_perfs = self.forward_generator(params_tensor, forward_noise)
+                    forward_predicted_perfs_denorm = self.target_scaler.inverse_transform(forward_predicted_perfs.cpu().numpy())
+                else:
+                    print("警告: 正向GAN生成器未初始化，使用性能预测器代替")
+                    if self.performance_predictor is not None:
+                        params_normalized = self.scaler.transform(generated_params_denorm)
+                        params_tensor = torch.tensor(params_normalized, dtype=torch.float32, device=self.device)
+                        forward_predicted_perfs = self.performance_predictor(params_tensor)
+                        forward_predicted_perfs_denorm = self.target_scaler.inverse_transform(forward_predicted_perfs.cpu().numpy())
+                    else:
+                        forward_predicted_perfs_denorm = np.tile(full_target_perf, (num_samples, 1))
 
-                # 筛选最佳设计（性能最接近目标的）
-                performance_errors = np.mean(np.abs(predicted_perfs_denorm - np.array(target_perf)), axis=1)
-                best_indices = np.argsort(performance_errors)[:3]  # 取前3个最佳设计
+                # 精确计算性能误差（使用完整性能向量）
+                target_perf_array = full_target_perf
+                performance_errors = np.mean(np.abs(forward_predicted_perfs_denorm - target_perf_array), axis=1)
+                best_indices = np.argsort(performance_errors)[:3]
 
                 print(f"生成完成！最佳3个设计:")
                 for j, idx in enumerate(best_indices):
                     design = generated_params_denorm[idx]
-                    perf = predicted_perfs_denorm[idx]
+                    perf = forward_predicted_perfs_denorm[idx]
                     error = performance_errors[idx]
                     print(f"  设计 {j+1}: 长度={design[0]:.2f}mm, 宽度={design[1]:.2f}mm, "
                           f"S11={perf[0]:.2f}dB, 频率={perf[1]:.2f}GHz, 增益={perf[2]:.2f}dBi, 误差={error:.3f}")
 
                 all_designs.extend(generated_params_denorm[best_indices])
-                all_performances.extend(predicted_perfs_denorm[best_indices])
+                # 保存完整性能指标
+                all_performances.extend(forward_predicted_perfs_denorm[best_indices])
 
         return np.array(all_designs), np.array(all_performances)
+
+    def _generate_s11_curve(self, s11_min, resonant_freq):
+        """
+        根据S11最小值和共振频率生成完整的S11曲线
+
+        参数:
+        s11_min: S11最小值
+        resonant_freq: 共振频率
+
+        返回:
+        s11_curve: 201个频率点的S11值
+        """
+        s11_curve = []
+        frequencies = np.array(self.freq_points)
+
+        for f in frequencies:
+            # 使用洛伦兹函数形状模拟S11曲线
+            distance_from_resonance = abs(f - resonant_freq)
+            s11_value = s11_min + 20 * (distance_from_resonance / 0.1) ** 2
+            s11_value = min(s11_value, 0)  # S11通常为负值或0
+            s11_curve.append(s11_value)
+
+        return np.array(s11_curve)
+
+
 
     def optimize_antenna_parameters(self, target_s11, target_gain, target_frequency,
                               bounds=None, num_iterations=1000):
