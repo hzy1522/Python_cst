@@ -105,17 +105,15 @@ def gan_demo(create_antenna_data):
     print(f"\n2. GAN模型训练...")
 
     # 训练GAN
-    # 训练反向GAN
-    forward_gan = False  # 使用反向GAN
-    gan_history_reverse = system.train_gan(X_train, y_train, epochs=3000, batch_size=128, forward_gan=forward_gan)
-    # 可视化GAN训练结果
-    system.visualize_gan_results(gan_history_reverse)
+    # 同时训练正向和反向GAN
+    history = system.train_gan(X_train, y_train, epochs=3000, batch_size=128, train_both=True)
+    # # 或者保持原有功能，只训练正向GAN
+    # history = system.train_gan(X_train, y_train, epochs=3000, batch_size=128, forward_gan=True)
+    # # 或者保持原有功能，只训练反向GAN
+    # history = system.train_gan(X_train, y_train, epochs=3000, batch_size=128, forward_gan=False)
 
-    # 训练正向GAN
-    forward_gan = True  # 使用正向GAN
-    gan_history_forward = system.train_gan(X_train, y_train, epochs=3000, batch_size=128, forward_gan=forward_gan)
     # 可视化GAN训练结果
-    system.visualize_gan_results(gan_history_forward)
+    system.visualize_gan_results(history)
 
     # 定义设计目标
     target_performances = [
@@ -137,8 +135,8 @@ def gan_demo(create_antenna_data):
     )
 
     # 可视化生成结果
-    system.visualize_gan_results(gan_history_reverse, generated_designs, generated_performances)
-    system.visualize_gan_results(gan_history_forward, generated_designs, generated_performances)
+    system.visualize_gan_results(history, generated_designs, generated_performances)
+    # system.visualize_gan_results(gan_history_forward, generated_designs, generated_performances)
 
     # 保存生成的设计
     design_df = pd.DataFrame({

@@ -55,16 +55,62 @@ def use_trained_gan_model(model_info_path='models/trained_gan_model_info.npy',
     print(f"\n1. 加载训练信息从 {model_info_path}...")
     if os.path.exists(model_info_path):
         training_info = np.load(model_info_path, allow_pickle=True).item()
+        # 加载预处理器状态
         print(f"✅ 训练信息加载完成！")
         print(f"   训练时间: {training_info.get('timestamp', '未知')}")
         print(f"   训练样本数: {training_info.get('data_samples', '未知')}")
         print(f"   训练设备: {training_info.get('device', '未知')}")
 
-        # 加载预处理器状态（如果存在）
         if 'scalers' in training_info:
-            system.input_scaler = training_info['scalers']['input_scaler']
-            system.target_scaler = training_info['scalers']['target_scaler']
-            print("✅ 数据预处理器加载完成！")
+            # 重建 input_scaler (system.scaler) - StandardScaler
+            from sklearn.preprocessing import StandardScaler, MinMaxScaler
+            system.scaler = StandardScaler()
+            input_scaler_data = training_info['scalers']['input_scaler']
+            system.scaler.scale_ = input_scaler_data['scale_']
+            system.scaler.mean_ = input_scaler_data['mean_']
+            system.scaler.var_ = input_scaler_data['var_']
+            if 'n_features_in_' in input_scaler_data and input_scaler_data['n_features_in_'] is not None:
+                system.scaler.n_features_in_ = input_scaler_data['n_features_in_']
+            else:
+                system.scaler.n_features_in_ = len(input_scaler_data['scale_']) if 'scale_' in input_scaler_data else 0
+            if 'n_samples_seen_' in input_scaler_data and input_scaler_data['n_samples_seen_'] is not None:
+                system.scaler.n_samples_seen_ = input_scaler_data['n_samples_seen_']
+            else:
+                system.scaler.n_samples_seen_ = 1
+
+            # 重建 target_scaler - MinMaxScaler
+            system.target_scaler = MinMaxScaler()
+            target_scaler_data = training_info['scalers']['target_scaler']
+            system.target_scaler.scale_ = target_scaler_data['scale_']
+            system.target_scaler.min_ = target_scaler_data['min_']
+            system.target_scaler.data_min_ = target_scaler_data['data_min_']
+            system.target_scaler.data_max_ = target_scaler_data['data_max_']
+            system.target_scaler.data_range_ = target_scaler_data['data_range_']
+            if 'n_features_in_' in target_scaler_data and target_scaler_data['n_features_in_'] is not None:
+                system.target_scaler.n_features_in_ = target_scaler_data['n_features_in_']
+            else:
+                system.target_scaler.n_features_in_ = len(target_scaler_data['scale_']) if 'scale_' in target_scaler_data else 0
+            if 'n_samples_seen_' in target_scaler_data and target_scaler_data['n_samples_seen_'] is not None:
+                system.target_scaler.n_samples_seen_ = target_scaler_data['n_samples_seen_']
+            else:
+                system.target_scaler.n_samples_seen_ = 1
+
+            # 更新检查函数以适配不同类型的缩放器
+            def _check_scalers_ready(system):
+                """检查预处理器是否已就绪"""
+                try:
+                    # 检查 scaler (StandardScaler) 是否已拟合
+                    _ = system.scaler.scale_
+                    _ = system.scaler.mean_
+
+                    # 检查 target_scaler (MinMaxScaler) 是否已拟合
+                    _ = system.target_scaler.scale_
+                    _ = system.target_scaler.min_
+
+                    return True
+                except AttributeError:
+                    return False
+
     else:
         print(f"⚠️  未找到训练信息文件，使用默认配置")
         training_info = {}
@@ -112,6 +158,16 @@ def use_trained_gan_model(model_info_path='models/trained_gan_model_info.npy',
         generated_designs, generated_performances = system.generate_antenna_designs(
             target_performances, num_samples=20
         )
+        # 添加空的history字典用于可视化
+        history = {
+            'generator_loss': [],
+            'discriminator_loss': [],
+            'adversarial_loss': [],
+            'performance_loss': []
+        }
+        # 可视化生成结果
+        system.visualize_gan_results(history, generated_designs, generated_performances)
+
     except Exception as e:
         print(f"❌ GAN生成过程出错: {e}")
         print("💡 请确认模型文件和预处理器状态是否完整保存")
@@ -134,8 +190,342 @@ def use_trained_gan_model(model_info_path='models/trained_gan_model_info.npy',
     design_df.to_csv(design_csv_path, index=False)
     print(f"生成的天线设计已保存到 {design_csv_path}")
 
-    # 后续代码保持不变...
+    """
+    # 5. 使用HFSS计算所有生成天线的性能结果
+    print(f"\n3. 使用HFSS验证所有生成的天线设计...")
+    hfss_results = []
 
+    for i in range(len(generated_designs)):
+        design = generated_designs[i]
+        predicted_perf = generated_performances[i]
+        print(f"\n验证设计 {i + 1}/{len(generated_designs)}: 长度={design[0]:.2f}mm, 宽度={design[1]:.2f}mm")
+        print(
+            f"  预测性能: S11={predicted_perf[0]:.2f}dB, 频率={predicted_perf[1]:.2f}GHz, 增益={predicted_perf[2]:.2f}dBi")
+
+        # HFSS仿真参数设置
+        antenna_params = {
+            "unit": "GHz",
+            "patch_length": float(design[0]),
+            "patch_width": float(design[1]),
+            "patch_name": "Patch",
+            "freq_step": "0.01GHz",
+            "num_of_freq_points": 201,
+            "start_frequency": 2,
+            "stop_frequency": 3,
+            "center_frequency": 2.5,
+            "sweep_type": "Interpolating",
+            "sub_length": 50,
+            "sub_width": 60,
+            "sub_high": 1.575,
+            "feed_r1": 0.5,
+            "feed_h": 1.575,
+            "feed_center": 6.3,
+            "lumpedport_r": 1.5,
+            "lumpedport_D": 2.3 / 2,
+        }
+
+        # 调用HFSS计算
+        train_model = False
+        try:
+            success, freq_at_s11_min, far_field_gain, s11_min, output_file = calculate_from_hfss_py(
+                antenna_params, train_model
+            )
+
+            if success and output_file:
+                print(f"  HFSS计算成功!")
+                print(f"  实际性能: S11={s11_min:.2f}dB, 频率={freq_at_s11_min:.2f}GHz, 增益={far_field_gain:.2f}dBi")
+
+                # 保存结果
+                hfss_results.append({
+                    'design_index': i,
+                    'patch_length': design[0],
+                    'patch_width': design[1],
+                    'predicted_s11': predicted_perf[0],
+                    'predicted_freq': predicted_perf[1],
+                    'predicted_gain': predicted_perf[2],
+                    'actual_s11': s11_min,
+                    'actual_freq': freq_at_s11_min,
+                    'actual_gain': far_field_gain,
+                    'output_file': output_file
+                })
+
+                # 绘制S11对比图
+                system.plot_s11_comparison_advanced(
+                    float(design[0]), float(design[1]),
+                    output_file, frequency_column=0, s11_column=1
+                )
+            else:
+                print(f"  HFSS计算失败")
+                hfss_results.append({
+                    'design_index': i,
+                    'patch_length': design[0],
+                    'patch_width': design[1],
+                    'predicted_s11': predicted_perf[0],
+                    'predicted_freq': predicted_perf[1],
+                    'predicted_gain': predicted_perf[2],
+                    'actual_s11': None,
+                    'actual_freq': None,
+                    'actual_gain': None,
+                    'output_file': None
+                })
+        except Exception as e:
+            print(f"  HFSS计算出错: {e}")
+            hfss_results.append({
+                'design_index': i,
+                'patch_length': design[0],
+                'patch_width': design[1],
+                'predicted_s11': predicted_perf[0],
+                'predicted_freq': predicted_perf[1],
+                'predicted_gain': predicted_perf[2],
+                'actual_s11': None,
+                'actual_freq': None,
+                'actual_gain': None,
+                'output_file': None
+            })
+
+    # 6. 保存HFSS验证结果
+    if hfss_results:
+        hfss_df = pd.DataFrame(hfss_results)
+        hfss_csv_path = 'results/hfss_validation_results.csv'
+        hfss_df.to_csv(hfss_csv_path, index=False)
+        print(f"\nHFSS验证结果已保存到 {hfss_csv_path}")
+    """
+
+def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan_model_info.npy',
+                         patch_lengths=None,
+                         patch_widths=None,
+                         gan_generator_path='models/gan_generator.pth',
+                         forward_gan_generator_path='models/forward_gan_generator.pth'):
+    """
+    使用已训练的GAN模型生成天线设计
+
+    Args:
+        model_info_path: 模型信息文件路径
+        target_performances: 目标性能参数列表
+    """
+    print("\n" + "=" * 70)
+    print("使用已训练的GAN模型")
+    print("=" * 70)
+
+    device = get_device()
+    system = PatchAntennaDesignSystem()
+
+    # 1. 加载训练信息和模型状态
+    print(f"\n1. 加载训练信息从 {model_info_path}...")
+    if os.path.exists(model_info_path):
+        training_info = np.load(model_info_path, allow_pickle=True).item()
+        # 加载预处理器状态
+        print(f"✅ 训练信息加载完成！")
+        print(f"   训练时间: {training_info.get('timestamp', '未知')}")
+        print(f"   训练样本数: {training_info.get('data_samples', '未知')}")
+        print(f"   训练设备: {training_info.get('device', '未知')}")
+
+        if 'scalers' in training_info:
+            # 重建 input_scaler (system.scaler) - StandardScaler
+            from sklearn.preprocessing import StandardScaler, MinMaxScaler
+            system.scaler = StandardScaler()
+            input_scaler_data = training_info['scalers']['input_scaler']
+            system.scaler.scale_ = input_scaler_data['scale_']
+            system.scaler.mean_ = input_scaler_data['mean_']
+            system.scaler.var_ = input_scaler_data['var_']
+            if 'n_features_in_' in input_scaler_data and input_scaler_data['n_features_in_'] is not None:
+                system.scaler.n_features_in_ = input_scaler_data['n_features_in_']
+            else:
+                system.scaler.n_features_in_ = len(input_scaler_data['scale_']) if 'scale_' in input_scaler_data else 0
+            if 'n_samples_seen_' in input_scaler_data and input_scaler_data['n_samples_seen_'] is not None:
+                system.scaler.n_samples_seen_ = input_scaler_data['n_samples_seen_']
+            else:
+                system.scaler.n_samples_seen_ = 1
+
+            # 重建 target_scaler - MinMaxScaler
+            system.target_scaler = MinMaxScaler()
+            target_scaler_data = training_info['scalers']['target_scaler']
+            system.target_scaler.scale_ = target_scaler_data['scale_']
+            system.target_scaler.min_ = target_scaler_data['min_']
+            system.target_scaler.data_min_ = target_scaler_data['data_min_']
+            system.target_scaler.data_max_ = target_scaler_data['data_max_']
+            system.target_scaler.data_range_ = target_scaler_data['data_range_']
+            if 'n_features_in_' in target_scaler_data and target_scaler_data['n_features_in_'] is not None:
+                system.target_scaler.n_features_in_ = target_scaler_data['n_features_in_']
+            else:
+                system.target_scaler.n_features_in_ = len(target_scaler_data['scale_']) if 'scale_' in target_scaler_data else 0
+            if 'n_samples_seen_' in target_scaler_data and target_scaler_data['n_samples_seen_'] is not None:
+                system.target_scaler.n_samples_seen_ = target_scaler_data['n_samples_seen_']
+            else:
+                system.target_scaler.n_samples_seen_ = 1
+
+            # 更新检查函数以适配不同类型的缩放器
+            def _check_scalers_ready(system):
+                """检查预处理器是否已就绪"""
+                try:
+                    # 检查 scaler (StandardScaler) 是否已拟合
+                    _ = system.scaler.scale_
+                    _ = system.scaler.mean_
+
+                    # 检查 target_scaler (MinMaxScaler) 是否已拟合
+                    _ = system.target_scaler.scale_
+                    _ = system.target_scaler.min_
+
+                    return True
+                except AttributeError:
+                    return False
+
+    else:
+        print(f"⚠️  未找到训练信息文件，使用默认配置")
+        training_info = {}
+
+    # 加载模型
+    # 确保模型已加载
+    if system.generator is None:
+        try:
+            system.create_gan_models()
+            state_dict = torch.load(gan_generator_path, map_location=system.device)
+            system.generator.load_state_dict(state_dict)
+            print("成功加载预训练的反向GAN生成器")
+        except Exception as e:
+            print(f"加载反向GAN模型失败: {e}")
+
+    if system.forward_generator is None:
+        try:
+            system.create_forward_gan_models()
+            state_dict = torch.load(forward_gan_generator_path, map_location=system.device)
+            system.forward_generator.load_state_dict(state_dict)
+            print("成功加载预训练的正向GAN生成器")
+        except Exception as e:
+            print(f"加载正向GAN模型失败: {e}")
+
+    if system.performance_predictor is None:
+        try:
+            system.performance_predictor = system.create_performance_predictor()
+            state_dict = torch.load('best_performance_predictor.pth', map_location=system.device)
+            system.performance_predictor.load_state_dict(state_dict)
+            print("成功加载预训练的性能预测器")
+        except Exception as e:
+            print(f"加载性能预测器失败: {e}")
+
+    # 5. 使用HFSS计算所有生成天线的性能结果
+    print(f"\n3. 使用HFSS验证所有生成的天线设计...")
+    hfss_results = []
+
+    if patch_lengths is None or patch_widths is None:
+        gan_data = pd.read_csv('results/gan_generated_designs.csv')
+        patch_lengths = gan_data['patch_length'].values
+        patch_widths = gan_data['patch_width'].values
+        print(f"从GAN生成结果中读取了 {len(patch_lengths)} 行数据")
+    else:
+        # 确保单个值也被转换为数组形式
+        if not isinstance(patch_lengths, (list, np.ndarray)):
+            patch_lengths = [patch_lengths]
+        if not isinstance(patch_widths, (list, np.ndarray)):
+            patch_widths = [patch_widths]
+        # 转换为numpy数组
+        patch_lengths = np.array(patch_lengths)
+        patch_widths = np.array(patch_widths)
+
+    # 5. 使用HFSS计算所有生成天线的性能结果
+    print(f"\n3. 使用HFSS验证所有生成的天线设计...")
+
+    for i in range(len(patch_lengths)):
+        design = np.zeros(2)  # 初始化design数组
+        design[0] = patch_lengths[i]
+        design[1] = patch_widths[i]
+        print(f"\n验证设计 {i + 1}/{len(patch_lengths)}: 长度={design[0]:.2f}mm, 宽度={design[1]:.2f}mm")
+
+        # HFSS仿真参数设置
+        antenna_params = {
+            "unit": "GHz",
+            "patch_length": float(design[0]),
+            "patch_width": float(design[1]),
+            "patch_name": "Patch",
+            "freq_step": "0.01GHz",
+            "num_of_freq_points": 201,
+            "start_frequency": 2,
+            "stop_frequency": 3,
+            "center_frequency": 2.5,
+            "sweep_type": "Interpolating",
+            "sub_length": 50,
+            "sub_width": 60,
+            "sub_high": 1.575,
+            "feed_r1": 0.5,
+            "feed_h": 1.575,
+            "feed_center": 6.3,
+            "lumpedport_r": 1.5,
+            "lumpedport_D": 2.3 / 2,
+        }
+
+        s11_curve_predict, s11_min_predict, freq_at_s11_min_predict, far_field_gain_predict = system.predict_s11_from_dimensions(
+            design[0], design[1])
+
+        # 调用HFSS计算
+        train_model = False
+        try:
+            success, freq_at_s11_min, far_field_gain, s11_min, output_file = calculate_from_hfss_py(
+                antenna_params, train_model
+            )
+
+            if success and output_file:
+                print(f"  HFSS计算成功!")
+                print(f"  实际性能: S11={s11_min:.2f}dB, 频率={freq_at_s11_min:.2f}GHz, 增益={far_field_gain:.2f}dBi")
+                print(f"  模型预测性能: S11={s11_min_predict:.2f}dB, 频率={freq_at_s11_min_predict:.2f}GHz, 增益={far_field_gain_predict:.2f}dBi")
+
+                # 保存结果
+                hfss_results.append({
+                    'design_index': i,
+                    'patch_length': design[0],
+                    'patch_width': design[1],
+                    'predicted_s11': s11_min_predict,
+                    'predicted_freq': freq_at_s11_min_predict,
+                    'predicted_gain': far_field_gain_predict,
+                    'actual_s11': s11_min,
+                    'actual_freq': freq_at_s11_min,
+                    'actual_gain': far_field_gain,
+                    'output_file': output_file
+                })
+
+                # 绘制S11对比图
+                system.plot_s11_comparison_advanced(
+                    float(design[0]), float(design[1]),
+                    output_file, frequency_column=0, s11_column=1,
+                    predict_s11_min=s11_min_predict,
+                    predict_freq=freq_at_s11_min_predict,
+                    predict_gain=far_field_gain_predict,
+                    predict_s11_curve=s11_curve_predict
+                )
+            else:
+                print(f"  HFSS计算失败")
+                hfss_results.append({
+                    'design_index': i,
+                    'patch_length': design[0],
+                    'patch_width': design[1],
+                    'predicted_s11': s11_min_predict,
+                    'predicted_freq': freq_at_s11_min_predict,
+                    'predicted_gain': far_field_gain_predict,
+                    'actual_s11': None,
+                    'actual_freq': None,
+                    'actual_gain': None,
+                    'output_file': None
+                })
+        except Exception as e:
+            print(f"  HFSS计算出错: {e}")
+            hfss_results.append({
+                'design_index': i,
+                'patch_length': design[0],
+                'patch_width': design[1],
+                'predicted_s11': s11_min_predict,
+                'predicted_freq': freq_at_s11_min_predict,
+                'predicted_gain': far_field_gain_predict,
+                'actual_s11': None,
+                'actual_freq': None,
+                'actual_gain': None,
+                'output_file': None
+            })
+
+    # 6. 保存HFSS验证结果
+    if hfss_results:
+        hfss_df = pd.DataFrame(hfss_results)
+        hfss_csv_path = 'results/hfss_validation_results.csv'
+        hfss_df.to_csv(hfss_csv_path, index=False)
+        print(f"\nHFSS验证结果已保存到 {hfss_csv_path}")
 
 if __name__ == "__main__":
     print("贴片天线GAN模型使用系统")
@@ -150,7 +540,7 @@ if __name__ == "__main__":
     ]
 
     result = use_trained_gan_model(model_info_path, target_specs)
-
+    use_trained_gan_model_prediction_results()
     print("\n" + "=" * 70)
     print("模型使用完成！")
     print("=" * 70)

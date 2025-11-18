@@ -84,9 +84,18 @@ def train_gan_model(create_antenna_data=0, model_save_path='trained_gan_model.pt
         print(f"=============================❌ 数据加载失败，使用合成数据: {e}=============================")
         X_scaled, y, X_original, y_original = system.generate_synthetic_data(num_samples=create_antenna_data)
 
+    # 应用数据增强
+    print("=============================应用数据增强=============================")
+    X_enhanced, y_enhanced = system.comprehensive_data_augmentation(X_original, y_original, target_samples=5000)
+
+    # 重新进行归一化
+    X_scaled_enhanced = system.scaler.fit_transform(X_enhanced)
+    y_scaled_enhanced = system.target_scaler.fit_transform(y_enhanced)
+
     # 划分数据集并移到设备
+    # X_train, X_val, y_train, y_val = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
     print("=============================划分数据集并移到设备=============================")
-    X_train, X_val, y_train, y_val = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+    X_train, X_val, y_train, y_val = train_test_split(X_scaled_enhanced, y_scaled_enhanced, test_size=0.2, random_state=42)
 
     def to_tensor_and_device(data, device):
         if not isinstance(data, torch.Tensor):
@@ -101,18 +110,15 @@ def train_gan_model(create_antenna_data=0, model_save_path='trained_gan_model.pt
     # 2. 模型训练阶段
     print("=============================训练模型=============================")
     print(f"\n2. GAN模型训练...")
+    # 同时训练正向和反向GAN
+    history = system.train_gan(X_train, y_train, epochs=5000, batch_size=128, train_both=True)
+   # # 或者保持原有功能，只训练正向GAN
+   #  history = system.train_gan(X_train, y_train, epochs=3000, batch_size=128, forward_gan=True)
+   #
+   # # 或者保持原有功能，只训练反向GAN
+   #  history = system.train_gan(X_train, y_train, epochs=3000, batch_size=128, forward_gan=False)
 
-    # 训练反向GAN
-    forward_gan = False  # 使用反向GAN
-    gan_history_reverse = system.train_gan(X_train, y_train, epochs=3000, batch_size=128, forward_gan=forward_gan)
-    # 可视化训练结果
-    system.visualize_gan_results(gan_history_reverse)
-
-    # 训练正向GAN
-    forward_gan = True  # 使用正向GAN
-    gan_history_forward = system.train_gan(X_train, y_train, epochs=3000, batch_size=128, forward_gan=forward_gan)
-    # 可视化训练结果
-    system.visualize_gan_results(gan_history_forward)
+    system.visualize_gan_results(history)
 
     # 3. 保存训练好的模型和相关信息
     print(f"\n3. 保存训练模型到 {model_save_path}...")
@@ -124,8 +130,29 @@ def train_gan_model(create_antenna_data=0, model_save_path='trained_gan_model.pt
 
     # 保存训练信息
     training_info = {
-        'gan_history_reverse': gan_history_reverse,
-        'gan_history_forward': gan_history_forward,
+        'gan_history_forward': history['forward'] if 'forward' in history else None,
+        'gan_history_reverse': history['reverse'] if 'reverse' in history else None,
+        'scalers': {
+            'input_scaler': {
+                'scale_': system.scaler.scale_,
+                'mean_': system.scaler.mean_,
+                'var_': system.scaler.var_,
+                'n_features_in_': getattr(system.scaler, 'n_features_in_',
+                                          system.scaler.scale_.shape[0] if hasattr(system.scaler, 'scale_') else 0),
+                'n_samples_seen_': getattr(system.scaler, 'n_samples_seen_', 1)
+            },
+            'target_scaler': {
+                'scale_': system.target_scaler.scale_,
+                'min_': system.target_scaler.min_,
+                'data_min_': system.target_scaler.data_min_,
+                'data_max_': system.target_scaler.data_max_,
+                'data_range_': system.target_scaler.data_range_,
+                'n_features_in_': getattr(system.target_scaler, 'n_features_in_',
+                                          system.target_scaler.scale_.shape[0] if hasattr(system.target_scaler,
+                                                                                          'scale_') else 0),
+                'n_samples_seen_': getattr(system.target_scaler, 'n_samples_seen_', 1)
+            },
+        },
         'X_train_shape': X_train.shape,
         'y_train_shape': y_train.shape,
         'X_val_shape': X_val.shape,
