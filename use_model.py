@@ -190,107 +190,6 @@ def use_trained_gan_model(model_info_path='models/trained_gan_model_info.npy',
     design_df.to_csv(design_csv_path, index=False)
     print(f"生成的天线设计已保存到 {design_csv_path}")
 
-    """
-    # 5. 使用HFSS计算所有生成天线的性能结果
-    print(f"\n3. 使用HFSS验证所有生成的天线设计...")
-    hfss_results = []
-
-    for i in range(len(generated_designs)):
-        design = generated_designs[i]
-        predicted_perf = generated_performances[i]
-        print(f"\n验证设计 {i + 1}/{len(generated_designs)}: 长度={design[0]:.2f}mm, 宽度={design[1]:.2f}mm")
-        print(
-            f"  预测性能: S11={predicted_perf[0]:.2f}dB, 频率={predicted_perf[1]:.2f}GHz, 增益={predicted_perf[2]:.2f}dBi")
-
-        # HFSS仿真参数设置
-        antenna_params = {
-            "unit": "GHz",
-            "patch_length": float(design[0]),
-            "patch_width": float(design[1]),
-            "patch_name": "Patch",
-            "freq_step": "0.01GHz",
-            "num_of_freq_points": 201,
-            "start_frequency": 2,
-            "stop_frequency": 3,
-            "center_frequency": 2.5,
-            "sweep_type": "Interpolating",
-            "sub_length": 50,
-            "sub_width": 60,
-            "sub_high": 1.575,
-            "feed_r1": 0.5,
-            "feed_h": 1.575,
-            "feed_center": 6.3,
-            "lumpedport_r": 1.5,
-            "lumpedport_D": 2.3 / 2,
-        }
-
-        # 调用HFSS计算
-        train_model = False
-        try:
-            success, freq_at_s11_min, far_field_gain, s11_min, output_file = calculate_from_hfss_py(
-                antenna_params, train_model
-            )
-
-            if success and output_file:
-                print(f"  HFSS计算成功!")
-                print(f"  实际性能: S11={s11_min:.2f}dB, 频率={freq_at_s11_min:.2f}GHz, 增益={far_field_gain:.2f}dBi")
-
-                # 保存结果
-                hfss_results.append({
-                    'design_index': i,
-                    'patch_length': design[0],
-                    'patch_width': design[1],
-                    'predicted_s11': predicted_perf[0],
-                    'predicted_freq': predicted_perf[1],
-                    'predicted_gain': predicted_perf[2],
-                    'actual_s11': s11_min,
-                    'actual_freq': freq_at_s11_min,
-                    'actual_gain': far_field_gain,
-                    'output_file': output_file
-                })
-
-                # 绘制S11对比图
-                system.plot_s11_comparison_advanced(
-                    float(design[0]), float(design[1]),
-                    output_file, frequency_column=0, s11_column=1
-                )
-            else:
-                print(f"  HFSS计算失败")
-                hfss_results.append({
-                    'design_index': i,
-                    'patch_length': design[0],
-                    'patch_width': design[1],
-                    'predicted_s11': predicted_perf[0],
-                    'predicted_freq': predicted_perf[1],
-                    'predicted_gain': predicted_perf[2],
-                    'actual_s11': None,
-                    'actual_freq': None,
-                    'actual_gain': None,
-                    'output_file': None
-                })
-        except Exception as e:
-            print(f"  HFSS计算出错: {e}")
-            hfss_results.append({
-                'design_index': i,
-                'patch_length': design[0],
-                'patch_width': design[1],
-                'predicted_s11': predicted_perf[0],
-                'predicted_freq': predicted_perf[1],
-                'predicted_gain': predicted_perf[2],
-                'actual_s11': None,
-                'actual_freq': None,
-                'actual_gain': None,
-                'output_file': None
-            })
-
-    # 6. 保存HFSS验证结果
-    if hfss_results:
-        hfss_df = pd.DataFrame(hfss_results)
-        hfss_csv_path = 'results/hfss_validation_results.csv'
-        hfss_df.to_csv(hfss_csv_path, index=False)
-        print(f"\nHFSS验证结果已保存到 {hfss_csv_path}")
-    """
-
 def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan_model_info.npy',
                          patch_lengths=None,
                          patch_widths=None,
@@ -452,6 +351,11 @@ def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan
             "lumpedport_r": 1.5,
             "lumpedport_D": 2.3 / 2,
         }
+        # 确保模型处于评估模式
+        if system.forward_generator is not None:
+            system.forward_generator.eval()
+        if system.performance_predictor is not None:
+            system.performance_predictor.eval()
 
         s11_curve_predict, s11_min_predict, freq_at_s11_min_predict, far_field_gain_predict = system.predict_s11_from_dimensions(
             design[0], design[1])
@@ -527,6 +431,56 @@ def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan
         hfss_df.to_csv(hfss_csv_path, index=False)
         print(f"\nHFSS验证结果已保存到 {hfss_csv_path}")
 
+def load_target_specs_from_csv(csv_file_path):
+    """
+    从CSV文件读取S参数最小值、增益、频率以及201个S参数点，保存成target_specs格式
+
+    Args:
+        csv_file_path: CSV文件路径
+
+    Returns:
+        target_specs: 204维的目标性能参数列表
+    """
+    # 读取CSV文件
+    df = pd.read_csv(csv_file_path)
+
+    # 假设CSV文件包含以下列：
+    # s11_min: S11最小值
+    # freq_at_s11_min: 对应频率
+    # far_field_gain: 远区场增益
+    # 以及201个S参数点（列名可能是频率值如'2.000', '2.010', ...）
+
+    target_specs = []
+
+    # 遍历每一行数据
+    for index, row in df.iterrows():
+        # 提取主要性能指标
+        s11_min = row['_最小值']  # S11最小值
+        freq = row['Freq [GHz]']  # 对应频率
+        gain = row['Gain_dB']   # 远区场增益
+
+        # 提取201个S参数点
+        # 方法1: 如果列名是频率值（如2.000, 2.010, ...）
+        s_parameters = []
+        freq_points = np.linspace(2.0, 3.0, 201)  # 生成201个频率点
+        for freq_point in freq_points:
+            col_name = f"{freq_point:.3f}"  # 根据实际列名格式调整
+            if col_name in row:
+                s_parameters.append(row[col_name])
+            else:
+                # 如果找不到对应列，可以使用默认值或插值
+                s_parameters.append(0.0)  # 使用默认值
+
+        # 方法2: 如果S参数是连续的列（如s11_1, s11_2, ..., s11_201）
+        # s_parameters = [row[f's11_{i}'] for i in range(1, 202)]
+
+        # 构造204维向量：[S11最小值, 对应频率, 远区场增益, 201个S参数点]
+        target_spec = [s11_min, freq, gain] + s_parameters
+        target_specs.append(target_spec)
+
+    return target_specs
+
+
 if __name__ == "__main__":
     print("贴片天线GAN模型使用系统")
     print("=" * 70)
@@ -534,13 +488,18 @@ if __name__ == "__main__":
     # 使用已训练模型
     model_info_path = 'models/trained_gan_model_info.npy'
 
-    # 可以自定义目标性能
-    target_specs = [
-        [-35.0, 2.45, 7.0],  # WiFi 2.45GHz 高性能设计
-    ]
 
-    result = use_trained_gan_model(model_info_path, target_specs)
-    use_trained_gan_model_prediction_results()
+    # 可以自定义目标性能
+    # target_specs = [
+    #     [-15.0, 2.5, 5.0],  # WiFi 2.45GHz 高性能设计
+    # ]
+
+    # target_specs = load_target_specs_from_csv('TEST_RESULT/data_dict_pandas_20251117_154108.csv')
+    # result = use_trained_gan_model(model_info_path, target_specs)
+
+    use_trained_gan_model_prediction_results(patch_lengths='39.22',
+                                             patch_widths='64.90')
+
     print("\n" + "=" * 70)
     print("模型使用完成！")
     print("=" * 70)

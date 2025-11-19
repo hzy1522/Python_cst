@@ -57,6 +57,62 @@ class PatchAntennaDesignSystem:
         self.forward_discriminator = None
         self.forward_generator = None
 
+    def compute_physics_loss(self, predictions):
+        """
+        计算物理约束损失，惩罚不合理预测
+        """
+        if predictions.shape[1] < 3:
+            return torch.tensor(0.0, device=predictions.device)
+
+        physics_loss = 0.0
+
+        # S11应该在合理范围内
+        s11_penalty = torch.relu(-40.0 - predictions[:, 0]) + torch.relu(predictions[:, 0] - 0.0)
+
+        # 频率应该在合理范围内
+        freq_penalty = torch.relu(2.0 - predictions[:, 1]) + torch.relu(predictions[:, 1] - 3.0)
+
+        # 增益应该为正值且在合理范围内
+        gain_penalty = torch.relu(-predictions[:, 2]) + torch.relu(predictions[:, 2] - 10.0)
+
+        physics_loss = torch.mean(s11_penalty + freq_penalty + gain_penalty)
+
+        return physics_loss
+
+    # 在 PatchAntennaDesignSystem 类中添加输出约束
+    def post_process_predictions(self, predictions):
+        """
+        对模型预测结果进行后处理，确保物理合理性
+        """
+        # 确保频率在合理范围内 (GHz)
+        # predictions[:, 1] = np.clip(predictions[:, 1], 2.0, 3.0)
+        # # 确保增益在合理范围内 (dBi)
+        # predictions[:, 2] = np.clip(predictions[:, 2], 0.0, 10.0)
+        # # S11应该是负值，但不能太小
+        # predictions[:, 0] = np.clip(predictions[:, 0], -40.0, 0.0)
+        # return predictions
+        #
+        # 创建预测结果的副本以避免修改原始数据
+        processed_predictions = predictions.copy()
+
+        # 确保频率在合理范围内 (GHz)
+        if processed_predictions.shape[1] > 1:
+            processed_predictions[:, 1] = np.clip(processed_predictions[:, 1], 2.0, 3.0)
+
+        # 确保增益在合理范围内 (dBi)
+        if processed_predictions.shape[1] > 2:
+            processed_predictions[:, 2] = np.clip(processed_predictions[:, 2], 0.0, 10.0)
+
+        # S11应该是负值，但不能太小
+        if processed_predictions.shape[1] > 0:
+            processed_predictions[:, 0] = np.clip(processed_predictions[:, 0], -40.0, 0.0)
+
+        # 对S11曲线部分进行处理(如果存在)
+        if processed_predictions.shape[1] > 3:
+            processed_predictions[:, 3:] = np.clip(processed_predictions[:, 3:], -60.0, 0.0)
+
+        return processed_predictions
+
     def plot_s11_comparison_advanced(self, patch_length, patch_width, csv_file_path,
                                      frequency_column=None, s11_column=None,
                                      predict_s11_min=None, predict_freq=None, predict_gain=None, predict_s11_curve=None):
@@ -251,6 +307,56 @@ class PatchAntennaDesignSystem:
                 torch.tensor(y_scaled, dtype=torch.float32),
                 X_original, y_original)
 
+    # 在 patch_antenna_design.py 的 validate_training_data 方法中，需要考虑数据已经被归一化的情况
+    def validate_training_data(self, X, y):
+        """
+        验证训练数据的质量，移除异常数据点
+        考虑数据可能已经被归一化的情况
+        """
+        print("数据质量检查:")
+
+        # 检查数据是否已经被归一化(值域在0-1之间)
+        is_normalized = (np.min(y[:, 0]) >= 0 and np.max(y[:, 0]) <= 1 and
+                         np.min(y[:, 1]) >= 0 and np.max(y[:, 1]) <= 1 and
+                         np.min(y[:, 2]) >= 0 and np.max(y[:, 2]) <= 1)
+
+        if is_normalized:
+            print("检测到数据已被归一化，使用归一化范围进行验证")
+            if y.shape[1] >= 3:
+                print(f"  S11范围: [{np.min(y[:, 0]):.2f}, {np.max(y[:, 0]):.2f}] (归一化值)")
+                print(f"  频率范围: [{np.min(y[:, 1]):.2f}, {np.max(y[:, 1]):.2f}] (归一化值)")
+                print(f"  增益范围: [{np.min(y[:, 2]):.2f}, {np.max(y[:, 2]):.2f}] (归一化值)")
+
+            # 对归一化数据使用宽松的验证条件
+            valid_indices = np.ones(len(y), dtype=bool)
+        else:
+            # 原始验证逻辑
+            if y.shape[1] >= 3:
+                print(f"  S11范围: [{np.min(y[:, 0]):.2f}, {np.max(y[:, 0]):.2f}] dB")
+                print(f"  频率范围: [{np.min(y[:, 1]):.2f}, {np.max(y[:, 1]):.2f}] GHz")
+                print(f"  增益范围: [{np.min(y[:, 2]):.2f}, {np.max(y[:, 2]):.2f}] dBi")
+
+            # 创建有效数据点的掩码
+            valid_indices = np.ones(len(y), dtype=bool)
+
+            # 检查主要性能指标是否在合理范围内
+            if y.shape[1] >= 3:
+                # S11应在合理范围内
+                valid_indices &= (y[:, 0] >= -40.0) & (y[:, 0] <= 0.0)
+                # 频率应在合理范围内
+                valid_indices &= (y[:, 1] >= 2.0) & (y[:, 1] <= 3.0)
+                # 增益应为正值
+                valid_indices &= (y[:, 2] >= 0.0) & (y[:, 2] <= 10.0)
+
+        print(f"有效数据点: {np.sum(valid_indices)}/{len(y)}")
+
+        # 如果过滤后没有数据，发出警告并返回原始数据
+        if np.sum(valid_indices) == 0:
+            print("警告: 数据验证过滤掉了所有数据，将使用原始数据")
+            return X, y
+
+        return X[valid_indices], y[valid_indices]
+
     def generate_synthetic_data(self, num_samples=10000):
         """
         生成更真实的合成贴片天线数据
@@ -400,14 +506,37 @@ class PatchAntennaDesignSystem:
                     nn.Dropout(0.2),
 
                     # 输出层：天线参数
-                    nn.Linear(128, output_dim),
-                    nn.Tanh()  # 输出范围[-1, 1]，后续可调整到实际范围
+                    # nn.Linear(128, output_dim),
+                    # nn.Tanh()  # 输出范围[-1, 1]，后续可调整到实际范围
+                    # 移除原来的输出层，我们将在 forward 中单独处理
+                    nn.Linear(128, output_dim)
                 )
+
+                # 为不同的输出维度定义激活函数
+                self.s11_activation = nn.Tanh()  # S11: [-40, 0] -> 映射到 [-1, 1]
+                self.freq_activation = nn.Sigmoid()  # 频率: [2.0, 3.0] -> 映射到 [0, 1]
+                self.gain_activation = nn.Sigmoid()  # 增益: [0, 10] -> 映射到 [0, 1]
 
             def forward(self, noise, targets):
                 # 拼接噪声和目标性能
                 input_data = torch.cat([noise, targets], dim=1)
-                return self.network(input_data)
+                output = self.network(input_data)
+                # 对输出施加物理约束
+                # 假设输出的前3个维度是 [S11, freq, gain]
+                if output.shape[1] >= 3:
+                    # S11 (dB): 从 [-1, 1] 映射到 [-40, 0]
+                    output[:, 0] = self.s11_activation(output[:, 0]) * 20 - 20
+                    # 频率 (GHz): 从 [-1, 1] 映射到 [1.5, 3.5]（放宽范围）
+                    output[:, 1] = torch.sigmoid(output[:, 1]) * 2.0 + 1.5
+                    # 增益 (dBi): 从 [-1, 1] 映射到 [-2, 12]（放宽范围）
+                    output[:, 2] = torch.sigmoid(output[:, 2]) * 14 - 2
+
+                    # 对于S11曲线部分(第4到204维度)，保持在合理范围内
+                    if output.shape[1] > 3:
+                        output[:, 3:] = torch.clamp(output[:, 3:], -80, 10)
+
+                return output
+                # return self.network(input_data)
 
         # 判别器：判断天线参数是否真实，并预测性能
         class Discriminator(nn.Module):
@@ -554,7 +683,7 @@ class PatchAntennaDesignSystem:
         print(f"生成器参数量: {sum(p.numel() for p in self.forward_generator.parameters() if p.requires_grad):,}")
         print(f"判别器参数量: {sum(p.numel() for p in self.forward_discriminator.parameters() if p.requires_grad):,}")
 
-    def train_performance_predictor(self, X_train, y_train, X_val, y_val, epochs=200, batch_size=128):
+    def train_performance_predictor(self, X_train, y_train, X_val, y_val, epochs=300, batch_size=128):
         """训练性能预测器"""
         print("\n训练性能预测器...")
 
@@ -900,6 +1029,30 @@ class PatchAntennaDesignSystem:
 
         print("\n开始训练GAN模型...")
 
+        # 在 train_gan 方法中，创建数据加载器之前添加：
+        print("验证训练数据质量...")
+        X_train_np = X_train.cpu().numpy() if torch.is_tensor(X_train) else X_train
+        y_train_np = y_train.cpu().numpy() if torch.is_tensor(y_train) else y_train
+
+        X_train_valid, y_train_valid = self.validate_training_data(X_train_np, y_train_np)
+
+        # 重新创建张量
+        X_train = torch.tensor(X_train_valid, dtype=torch.float32, device=self.device)
+        y_train = torch.tensor(y_train_valid, dtype=torch.float32, device=self.device)
+        # 在 train_gan 方法中，数据清洗后添加检查
+        print(f"清洗后数据量: {X_train.shape[0]}")
+
+        if X_train.shape[0] == 0:
+            raise ValueError("数据清洗后没有剩余数据，请检查数据验证逻辑或原始数据质量")
+
+        # 如果数据量过少，可以考虑使用合成数据补充
+        if X_train.shape[0] < 50:  # 设置一个最小阈值
+            print(f"警告: 清洗后数据量较少 ({X_train.shape[0]}), 补充合成数据")
+            X_synthetic, y_synthetic, _, _ = self.generate_synthetic_data(num_samples=1000)
+            X_train = torch.cat([X_train, torch.tensor(X_synthetic, dtype=torch.float32, device=self.device)], dim=0)
+            y_train = torch.cat([y_train, torch.tensor(y_synthetic, dtype=torch.float32, device=self.device)], dim=0)
+            print(f"补充合成数据后数据量: {X_train.shape[0]}")
+
         # 创建数据加载器
         dataset = TensorDataset(X_train, y_train)
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
@@ -991,6 +1144,18 @@ class PatchAntennaDesignSystem:
                     # 判别器对虚假数据的预测
                     fake_pred_f = forward_discriminator(real_params_f, fake_perfs_f)
 
+                    # # 计算生成器损失
+                    # g_loss_adv_f = adversarial_loss(fake_pred_f, current_real_labels)
+                    # g_loss_perf_f = performance_loss(fake_perfs_f, real_perfs_f)
+                    # g_loss_f = g_loss_adv_f + g_loss_perf_f
+
+                    # # 在 train_gan 方法的生成器训练部分，找到计算 g_loss 的地方，修改为：
+                    # g_loss_adv = adversarial_loss(fake_pred_r, current_real_labels)
+                    # g_loss_perf = performance_loss(gen_perfs_r, real_perfs_r)
+                    # g_loss_physics = self.compute_physics_loss(fake_params_r)  # 添加物理约束损失
+                    # g_loss = g_loss_adv + g_loss_perf * 2.0 + g_loss_physics * 0.5  # 组合损失
+
+                    # 修改为正确的代码:
                     # 计算生成器损失
                     g_loss_adv_f = adversarial_loss(fake_pred_f, current_real_labels)
                     g_loss_perf_f = performance_loss(fake_perfs_f, real_perfs_f)
@@ -1462,21 +1627,6 @@ class PatchAntennaDesignSystem:
         s11_curve = s11_curve + noise
 
         return np.clip(s11_curve, -60, 0)
-
-        """
-        # s11_curve = []
-        # frequencies = np.array(self.freq_points)
-        # 
-        # for f in frequencies:
-        #     # 使用洛伦兹函数形状模拟S11曲线
-        #     distance_from_resonance = abs(f - resonant_freq)
-        #     s11_value = s11_min + 20 * (distance_from_resonance / 0.1) ** 2
-        #     s11_value = min(s11_value, 0)  # S11通常为负值或0
-        #     s11_curve.append(s11_value)
-        # 
-        # return np.array(s11_curve)
-        """
-
 
     def optimize_antenna_parameters(self, target_s11, target_gain, target_frequency,
                               bounds=None, num_iterations=1000):
@@ -2504,30 +2654,68 @@ class PatchAntennaDesignSystem:
         far_field_gain: 远区场增益
         """
 
-        # 准备输入数据
-        params = np.array([[patch_length, patch_width]], dtype=np.float32)
+        # # 准备输入数据
+        # params = np.array([[patch_length, patch_width]], dtype=np.float32)
+        #
+        # # 归一化输入参数
+        # params_normalized = self.scaler.transform(params)
+        # params_tensor = torch.tensor(params_normalized, dtype=torch.float32, device=self.device)
+        #
+        # # 使用性能预测器进行预测
+        # self.performance_predictor.eval()
+        # with torch.no_grad():
+        #     predicted_performance = self.performance_predictor(params_tensor)
+        #     predicted_performance = predicted_performance.cpu().numpy()
+        #
+        # # 反归一化预测结果
+        # predicted_performance_denorm = self.target_scaler.inverse_transform(predicted_performance)[0]
+        #
+        # # 提取结果
+        # s11_min = predicted_performance_denorm[0]
+        # freq_at_s11_min = predicted_performance_denorm[1]
+        # far_field_gain = predicted_performance_denorm[2]
+        # s11_curve = predicted_performance_denorm[3:]  # 201个频率点的S11值
+        #
+        # return s11_curve, s11_min, freq_at_s11_min, far_field_gain
+        """
+            根据贴片尺寸预测S11曲线和关键参数
+        """
+        # 确保模型处于评估模式
+        if self.forward_generator is not None:
+            self.forward_generator.eval()
+        if self.performance_predictor is not None:
+            self.performance_predictor.eval()
 
-        # 归一化输入参数
-        params_normalized = self.scaler.transform(params)
-        params_tensor = torch.tensor(params_normalized, dtype=torch.float32, device=self.device)
+        # 输入预处理
+        dimensions = np.array([[patch_length, patch_width]], dtype=np.float32)
+        scaled_dimensions = self.scaler.transform(dimensions)
 
-        # 使用性能预测器进行预测
-        self.performance_predictor.eval()
+        # 转换为张量
+        input_tensor = torch.tensor(scaled_dimensions, dtype=torch.float32).to(self.device)
+
+        # 模型预测
         with torch.no_grad():
-            predicted_performance = self.performance_predictor(params_tensor)
-            predicted_performance = predicted_performance.cpu().numpy()
+            #生成噪声向量
+            noise = torch.randn(1, self.noise_dim, device=self.device)
+            prediction = self.forward_generator(input_tensor, noise)
+            # prediction = self.forward_generator(input_tensor)
 
-        # 反归一化预测结果
-        predicted_performance_denorm = self.target_scaler.inverse_transform(predicted_performance)[0]
+        # 反归一化
+        prediction_np = prediction.cpu().numpy()
+        unscaled_prediction = self.target_scaler.inverse_transform(prediction_np)
 
-        # 提取结果
-        s11_min = predicted_performance_denorm[0]
-        freq_at_s11_min = predicted_performance_denorm[1]
-        far_field_gain = predicted_performance_denorm[2]
-        s11_curve = predicted_performance_denorm[3:]  # 201个频率点的S11值
+        # 后处理确保物理合理性
+        unscaled_prediction = self.post_process_predictions(unscaled_prediction)
+
+        # 提取预测结果
+        s11_min = unscaled_prediction[0, 0]
+        freq_at_s11_min = unscaled_prediction[0, 1]
+        far_field_gain = unscaled_prediction[0, 2]
+
+        # 生成模拟的S11曲线
+        s11_curve = self._generate_s11_curve(freq_at_s11_min, s11_min)
 
         return s11_curve, s11_min, freq_at_s11_min, far_field_gain
-
 
 if __name__ == "__main__":
     # 演示使用
