@@ -35,7 +35,7 @@ def validate_s_parameter_curve(row):
         #         continue
 
         if len(s_values) < 201:  # 确保有足够的数据点
-            print(f"数据点数不足，无法进行验证")
+            # print(f"数据点数不足，无法进行验证")
             return False
         else:
             print(f"数据是{s_values}")
@@ -46,7 +46,7 @@ def validate_s_parameter_curve(row):
 
         # 2. 检查最小值是否在中间区域
         if min_idx < 50 or min_idx > 150:
-            print(f"数据点不在中间区域，无法进行验证")
+            # print(f"数据点不在中间区域，无法进行验证")
             return False
 
         # 3. 检查曲线趋势（两端高，中间低）
@@ -56,7 +56,7 @@ def validate_s_parameter_curve(row):
 
         # 中间应该比两边低
         if center_avg >= min(left_avg, right_avg):
-            print(f"数据点趋势不符合要求，无法进行验证")
+            # print(f"数据点趋势不符合要求，无法进行验证")
             return False
 
         return True

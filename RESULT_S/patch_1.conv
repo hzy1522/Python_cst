@@ -8,16 +8,16 @@ Minimum   : 1
 ==================
 Criterion : Max Mag. Delta S
 Target    : 0.02
-Current   : 0.034121
+Current   : 0.040445
 Target Consecutive Passes  : 1
 Current Consecutive Passes : 0
 Converged : No
 ==================
 Pass Number|Solved Elements|Max Mag. Delta S|
-          1|           1452|             N/A|
-          2|           1894|        0.051356|
-          3|           2464|        0.068471|
-          4|           3208|        0.065338|
-          5|           4181|        0.042604|
-          6|           5436|        0.034121|
+          1|           1356|             N/A|
+          2|           1768|         0.03427|
+          3|           2300|         0.15178|
+          4|           2995|        0.065346|
+          5|           3897|        0.071548|
+          6|           4410|        0.040445|
 
