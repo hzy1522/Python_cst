@@ -759,7 +759,7 @@ class PatchAntennaDesignSystem:
         print(f"生成器参数量: {sum(p.numel() for p in self.forward_generator.parameters() if p.requires_grad):,}")
         print(f"判别器参数量: {sum(p.numel() for p in self.forward_discriminator.parameters() if p.requires_grad):,}")
 
-    def train_performance_predictor(self, X_train, y_train, X_val, y_val, epochs=300, batch_size=128):
+    def train_performance_predictor(self, X_train, y_train, X_val, y_val, epochs=200, batch_size=128):
         """训练性能预测器"""
         print("\n训练性能预测器...")
 
@@ -1103,7 +1103,7 @@ class PatchAntennaDesignSystem:
 
         return X_final, y_final
 
-    def train_gan(self, X_train, y_train, epochs=5000, batch_size=128, forward_gan=True, train_both=False):
+    def train_gan(self, X_train, y_train, epochs=3000, batch_size=128, forward_gan=True, train_both=False):
         """训练GAN模型"""
 
         def compute_gradient_penalty(discriminator, real_samples, fake_samples, forward_gan=True):

@@ -461,7 +461,8 @@ def load_target_specs_from_csv(csv_file_path):
         # s_parameters = [row[f's11_{i}'] for i in range(1, 202)]
 
         # 构造204维向量：[S11最小值, 对应频率, 远区场增益, 201个S参数点]
-        target_spec = [s11_min, freq, gain] + s_parameters
+        # target_spec = [s11_min, freq, gain] + s_parameters
+        target_spec = s_parameters
         target_specs.append(target_spec)
 
     return target_specs
@@ -482,6 +483,7 @@ if __name__ == "__main__":
 
     target_specs = load_target_specs_from_csv('TEST_RESULT/data_dict_pandas_20251117_154108.csv')
     use_trained_gan_model(model_info_path, target_specs)
+
     use_trained_gan_model_prediction_results()
     # use_trained_gan_model_prediction_results(patch_lengths='40', patch_widths='50')
 

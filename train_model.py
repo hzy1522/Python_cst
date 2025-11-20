@@ -84,18 +84,27 @@ def train_gan_model(create_antenna_data=0, model_save_path='trained_gan_model.pt
         print(f"=============================❌ 数据加载失败，使用合成数据: {e}=============================")
         X_scaled, y, X_original, y_original = system.generate_synthetic_data(num_samples=create_antenna_data)
 
-    # 应用数据增强
-    print("=============================应用数据增强=============================")
-    X_enhanced, y_enhanced = system.comprehensive_data_augmentation(X_original, y_original, target_samples=5000)
+    # # 应用数据增强
+    # print("=============================应用数据增强=============================")
+    # X_enhanced, y_enhanced = system.comprehensive_data_augmentation(X_original, y_original, target_samples=5000)
+    #
+    # # 重新进行归一化
+    # X_scaled_enhanced = system.scaler.fit_transform(X_enhanced)
+    # y_scaled_enhanced = system.target_scaler.fit_transform(y_enhanced)
+    #
+    # # 划分数据集并移到设备
+    # # X_train, X_val, y_train, y_val = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+    # print("=============================划分数据集并移到设备=============================")
+    # X_train, X_val, y_train, y_val = train_test_split(X_scaled_enhanced, y_scaled_enhanced, test_size=0.2, random_state=42)
 
-    # 重新进行归一化
-    X_scaled_enhanced = system.scaler.fit_transform(X_enhanced)
-    y_scaled_enhanced = system.target_scaler.fit_transform(y_enhanced)
+    # 不使用数据增强，直接对原始数据进行归一化
+    X_scaled_original = system.scaler.fit_transform(X_original)
+    y_scaled_original = system.target_scaler.fit_transform(y_original)
 
     # 划分数据集并移到设备
-    # X_train, X_val, y_train, y_val = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
     print("=============================划分数据集并移到设备=============================")
-    X_train, X_val, y_train, y_val = train_test_split(X_scaled_enhanced, y_scaled_enhanced, test_size=0.2, random_state=42)
+    X_train, X_val, y_train, y_val = train_test_split(X_scaled_original, y_scaled_original, test_size=0.2, random_state=42)
+
 
     def to_tensor_and_device(data, device):
         if not isinstance(data, torch.Tensor):
@@ -111,7 +120,7 @@ def train_gan_model(create_antenna_data=0, model_save_path='trained_gan_model.pt
     print("=============================训练模型=============================")
     print(f"\n2. GAN模型训练...")
     # 同时训练正向和反向GAN
-    history = system.train_gan(X_train, y_train, epochs=5000, batch_size=128, train_both=True)
+    history = system.train_gan(X_train, y_train, epochs=3000, batch_size=128, train_both=True)
    # # 或者保持原有功能，只训练正向GAN
    #  history = system.train_gan(X_train, y_train, epochs=3000, batch_size=128, forward_gan=True)
    #

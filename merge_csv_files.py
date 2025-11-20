@@ -14,6 +14,56 @@ def detect_file_encoding(file_path):
         result = chardet.detect(f.read(10000))
     return result['encoding'] or 'utf-8'
 
+
+# 添加曲线验证函数
+def validate_s_parameter_curve(row):
+    """
+    验证S参数曲线是否具有中心凹陷的典型形状
+    """
+    try:
+        # 提取数值数据（假设S参数从某列开始）
+        s_values = []
+        for i in range(49, min(250, len(row))):  # 索引从49开始对应第50列
+            try:
+                s_values.append(float(row[i]))
+            except ValueError:
+                continue
+        # for val in row:
+        #     try:
+        #         s_values.append(float(val))
+        #     except ValueError:
+        #         continue
+
+        if len(s_values) < 201:  # 确保有足够的数据点
+            print(f"数据点数不足，无法进行验证")
+            return False
+        else:
+            print(f"数据是{s_values}")
+
+        # 简单的形状验证逻辑
+        # 1. 检查是否存在明显的最小值点
+        min_idx = s_values.index(min(s_values))
+
+        # 2. 检查最小值是否在中间区域
+        if min_idx < 50 or min_idx > 150:
+            print(f"数据点不在中间区域，无法进行验证")
+            return False
+
+        # 3. 检查曲线趋势（两端高，中间低）
+        left_avg = sum(s_values[:50]) / 50
+        right_avg = sum(s_values[-50:]) / 50
+        center_avg = sum(s_values[75:125]) / 50
+
+        # 中间应该比两边低
+        if center_avg >= min(left_avg, right_avg):
+            print(f"数据点趋势不符合要求，无法进行验证")
+            return False
+
+        return True
+
+    except:
+        return False
+
 def merge_single_line_csv_files(input_pattern, output_file, header_check_count=40):
     """合并每个只有一行表头一行数据的CSV文件"""
     print("=" * 60)
@@ -154,21 +204,41 @@ def merge_single_line_csv_files(input_pattern, output_file, header_check_count=4
                 min_value_col_name = header_row[min_value_col_index]
                 filtered_data = []
                 removed_count = 0
+                shape_filtered_count = 0  # 新增计数器
 
                 for row in data_rows:
                     try:
+                        # 原有的最小值检查
                         min_value = float(row[min_value_col_index])
-                        if min_value <= -5.0:
-                            filtered_data.append(row)
-                        else:
+                        if min_value > -5.0:
                             removed_count += 1
+                            continue
+
+                        # 新增：曲线形状验证
+                        print(row)
+                        if not validate_s_parameter_curve(row):
+                            shape_filtered_count += 1
+                            continue
+
+                        filtered_data.append(row)
                     except (ValueError, IndexError):
                         filtered_data.append(row)
+
+                # for row in data_rows:
+                #     try:
+                #         min_value = float(row[min_value_col_index])
+                #         if min_value <= -5.0:
+                #             filtered_data.append(row)
+                #         else:
+                #             removed_count += 1
+                #     except (ValueError, IndexError):
+                #         filtered_data.append(row)
 
                 print(f"📊 筛选统计:")
                 print(f"   原始数据: {len(data_rows)} 行")
                 print(f"   筛选后: {len(filtered_data)} 行")
                 print(f"   删除行数: {removed_count} 行 (S11 > -5dB)")
+                print(f"   曲线异常删除: {shape_filtered_count} 行")
 
                 # 保存筛选后的数据
                 with open(output_file, 'w', encoding='utf-8-sig', newline='') as f:
@@ -221,7 +291,7 @@ def merge_single_line_csv_files(input_pattern, output_file, header_check_count=4
 def main():
     """主函数"""
     # 配置参数
-    input_pattern = "./RESULT/data_dict_pandas_*.csv"
+    input_pattern = "./Train_data/data_dict_pandas_*.csv"
     output_file = "merged_detailed_antenna_data.csv"
     header_check_count = 40
 
