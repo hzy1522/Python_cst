@@ -355,6 +355,16 @@ def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan
         # s11_curve_predict, s11_min_predict, freq_at_s11_min_predict, far_field_gain_predict = system.predict_s11_from_dimensions(
         #     design[0], design[1])
         s11_curve_predict = system.predict_s11_from_dimensions(design[0], design[1])
+
+        # 查找S11最小值及其对应的频率点
+        s11_min_predict = np.min(s11_curve_predict)
+        min_index = np.argmin(s11_curve_predict)
+        freq_points = np.linspace(2.0, 3.0, len(s11_curve_predict))  # 201个频率点从2.0GHz到3.0GHz
+        freq_at_s11_min_predict = freq_points[min_index]
+
+        # print(f"预测的S11最小值: {s11_min_predict:.2f}dB")
+        # print(f"对应的频率: {freq_at_s11_min_predict:.2f}GHz")
+
         # 调用HFSS计算
         train_model = False
         try:
@@ -365,15 +375,18 @@ def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan
             if success and output_file:
                 print(f"  HFSS计算成功!")
                 print(f"  实际性能: S11={s11_min:.2f}dB, 频率={freq_at_s11_min:.2f}GHz, 增益={far_field_gain:.2f}dBi")
-                # print(f"  模型预测性能: S11={s11_min_predict:.2f}dB, 频率={freq_at_s11_min_predict:.2f}GHz, 增益={far_field_gain_predict:.2f}dBi")
+                print(f"  模型预测性能: S11={s11_min_predict:.2f}dB, "
+                      f"频率={freq_at_s11_min_predict:.2f}GHz, "
+                      # f"增益={far_field_gain_predict:.2f}dBi"
+                      )
 
                 # 保存结果
                 hfss_results.append({
                     'design_index': i,
                     'patch_length': design[0],
                     'patch_width': design[1],
-                    # 'predicted_s11': s11_min_predict,
-                    # 'predicted_freq': freq_at_s11_min_predict,
+                    'predicted_s11': s11_min_predict,
+                    'predicted_freq': freq_at_s11_min_predict,
                     # 'predicted_gain': far_field_gain_predict,
                     'actual_s11': s11_min,
                     'actual_freq': freq_at_s11_min,
@@ -393,8 +406,8 @@ def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan
                     'design_index': i,
                     'patch_length': design[0],
                     'patch_width': design[1],
-                    # 'predicted_s11': s11_min_predict,
-                    # 'predicted_freq': freq_at_s11_min_predict,
+                    'predicted_s11': s11_min_predict,
+                    'predicted_freq': freq_at_s11_min_predict,
                     # 'predicted_gain': far_field_gain_predict,
                     'actual_s11': None,
                     'actual_freq': None,
@@ -407,8 +420,8 @@ def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan
                 'design_index': i,
                 'patch_length': design[0],
                 'patch_width': design[1],
-                # 'predicted_s11': s11_min_predict,
-                # 'predicted_freq': freq_at_s11_min_predict,
+                'predicted_s11': s11_min_predict,
+                'predicted_freq': freq_at_s11_min_predict,
                 # 'predicted_gain': far_field_gain_predict,
                 'actual_s11': None,
                 'actual_freq': None,
@@ -475,17 +488,11 @@ if __name__ == "__main__":
     # 使用已训练模型
     model_info_path = 'models/trained_gan_model_info.npy'
 
-
-    # 可以自定义目标性能
-    # target_specs = [
-    #     [-15.0, 2.5, 5.0],  # WiFi 2.45GHz 高性能设计
-    # ]
-
-    target_specs = load_target_specs_from_csv('TEST_RESULT/data_dict_pandas_20251117_154108.csv')
-    use_trained_gan_model(model_info_path, target_specs)
-
-    use_trained_gan_model_prediction_results()
-    # use_trained_gan_model_prediction_results(patch_lengths='40', patch_widths='50')
+    # target_specs = load_target_specs_from_csv('TEST_RESULT/data_dict_pandas_20251117_154211.csv')
+    # use_trained_gan_model(model_info_path, target_specs)
+    #
+    # use_trained_gan_model_prediction_results()
+    use_trained_gan_model_prediction_results(patch_lengths='40', patch_widths='40')
 
     print("\n" + "=" * 70)
     print("模型使用完成！")
