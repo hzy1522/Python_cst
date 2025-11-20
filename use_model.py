@@ -5,12 +5,10 @@ Patch Antenna Design System - Model Usage Module
 
 import sys
 import os
-import time
 import numpy as np
 import torch
 import pandas as pd
-from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
+
 
 # 添加当前目录到系统路径
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -200,7 +198,6 @@ def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan
 
     Args:
         model_info_path: 模型信息文件路径
-        target_performances: 目标性能参数列表
     """
     print("\n" + "=" * 70)
     print("使用已训练的GAN模型")
@@ -302,8 +299,6 @@ def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan
         except Exception as e:
             print(f"加载性能预测器失败: {e}")
 
-    # 5. 使用HFSS计算所有生成天线的性能结果
-    print(f"\n3. 使用HFSS验证所有生成的天线设计...")
     hfss_results = []
 
     if patch_lengths is None or patch_widths is None:
@@ -357,9 +352,9 @@ def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan
         if system.performance_predictor is not None:
             system.performance_predictor.eval()
 
-        s11_curve_predict, s11_min_predict, freq_at_s11_min_predict, far_field_gain_predict = system.predict_s11_from_dimensions(
-            design[0], design[1])
-
+        # s11_curve_predict, s11_min_predict, freq_at_s11_min_predict, far_field_gain_predict = system.predict_s11_from_dimensions(
+        #     design[0], design[1])
+        s11_curve_predict = system.predict_s11_from_dimensions(design[0], design[1])
         # 调用HFSS计算
         train_model = False
         try:
@@ -370,16 +365,16 @@ def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan
             if success and output_file:
                 print(f"  HFSS计算成功!")
                 print(f"  实际性能: S11={s11_min:.2f}dB, 频率={freq_at_s11_min:.2f}GHz, 增益={far_field_gain:.2f}dBi")
-                print(f"  模型预测性能: S11={s11_min_predict:.2f}dB, 频率={freq_at_s11_min_predict:.2f}GHz, 增益={far_field_gain_predict:.2f}dBi")
+                # print(f"  模型预测性能: S11={s11_min_predict:.2f}dB, 频率={freq_at_s11_min_predict:.2f}GHz, 增益={far_field_gain_predict:.2f}dBi")
 
                 # 保存结果
                 hfss_results.append({
                     'design_index': i,
                     'patch_length': design[0],
                     'patch_width': design[1],
-                    'predicted_s11': s11_min_predict,
-                    'predicted_freq': freq_at_s11_min_predict,
-                    'predicted_gain': far_field_gain_predict,
+                    # 'predicted_s11': s11_min_predict,
+                    # 'predicted_freq': freq_at_s11_min_predict,
+                    # 'predicted_gain': far_field_gain_predict,
                     'actual_s11': s11_min,
                     'actual_freq': freq_at_s11_min,
                     'actual_gain': far_field_gain,
@@ -390,9 +385,6 @@ def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan
                 system.plot_s11_comparison_advanced(
                     float(design[0]), float(design[1]),
                     output_file, frequency_column=0, s11_column=1,
-                    predict_s11_min=s11_min_predict,
-                    predict_freq=freq_at_s11_min_predict,
-                    predict_gain=far_field_gain_predict,
                     predict_s11_curve=s11_curve_predict
                 )
             else:
@@ -401,9 +393,9 @@ def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan
                     'design_index': i,
                     'patch_length': design[0],
                     'patch_width': design[1],
-                    'predicted_s11': s11_min_predict,
-                    'predicted_freq': freq_at_s11_min_predict,
-                    'predicted_gain': far_field_gain_predict,
+                    # 'predicted_s11': s11_min_predict,
+                    # 'predicted_freq': freq_at_s11_min_predict,
+                    # 'predicted_gain': far_field_gain_predict,
                     'actual_s11': None,
                     'actual_freq': None,
                     'actual_gain': None,
@@ -415,9 +407,9 @@ def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan
                 'design_index': i,
                 'patch_length': design[0],
                 'patch_width': design[1],
-                'predicted_s11': s11_min_predict,
-                'predicted_freq': freq_at_s11_min_predict,
-                'predicted_gain': far_field_gain_predict,
+                # 'predicted_s11': s11_min_predict,
+                # 'predicted_freq': freq_at_s11_min_predict,
+                # 'predicted_gain': far_field_gain_predict,
                 'actual_s11': None,
                 'actual_freq': None,
                 'actual_gain': None,
@@ -443,12 +435,6 @@ def load_target_specs_from_csv(csv_file_path):
     """
     # 读取CSV文件
     df = pd.read_csv(csv_file_path)
-
-    # 假设CSV文件包含以下列：
-    # s11_min: S11最小值
-    # freq_at_s11_min: 对应频率
-    # far_field_gain: 远区场增益
-    # 以及201个S参数点（列名可能是频率值如'2.000', '2.010', ...）
 
     target_specs = []
 
@@ -494,11 +480,10 @@ if __name__ == "__main__":
     #     [-15.0, 2.5, 5.0],  # WiFi 2.45GHz 高性能设计
     # ]
 
-    # target_specs = load_target_specs_from_csv('TEST_RESULT/data_dict_pandas_20251117_154108.csv')
-    # result = use_trained_gan_model(model_info_path, target_specs)
-
-    use_trained_gan_model_prediction_results(patch_lengths='39.22',
-                                             patch_widths='64.90')
+    target_specs = load_target_specs_from_csv('TEST_RESULT/data_dict_pandas_20251117_154108.csv')
+    use_trained_gan_model(model_info_path, target_specs)
+    use_trained_gan_model_prediction_results()
+    # use_trained_gan_model_prediction_results(patch_lengths='40', patch_widths='50')
 
     print("\n" + "=" * 70)
     print("模型使用完成！")
