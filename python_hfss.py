@@ -442,12 +442,12 @@ class AdvancedHFSSEntennaSimulator:
             csv_file_path_base = "./TEST_RESULT/farfield_data_zidian.csv"
             output_path_base = "./TEST_RESULT/data_dict_pandas.csv"
 
-        target_pattern = "RealizedGain"
+        target_pattern = "Gain_dB"
 
         csv_file_path, output_path = self.add_timestamp_to_filename(csv_file_path_base, output_path_base)
         self.save_farfield_data_to_csv(data, csv_file_path)
 
-# --------------------------------------------------提取增益最大结果并保存-------------------------------------------------
+        # --------------------------------------------------提取增益最大结果并保存-------------------------------------------------
         # 替换为你的CSV文件路径
         extreme_data = self.find_csv_extreme_rows(
             csv_file_path=csv_file_path,
@@ -531,7 +531,73 @@ class AdvancedHFSSEntennaSimulator:
         )
         # input("请按回车键继续1100...")
         print("=" * 80)
+        # 新代码：
+        matrix_data = self.extract_farfield_to_matrix_dict(csv_file_path)
+        print("保存远区场矩阵数据")
+        print(f"{output_path}----{csv_file_path}")
+        # 方式2：如果一定要保存到CSV中，可以展平数据
+        self.save_extreme_dicts_to_csv(
+            extreme_dicts=matrix_data,
+            output_file=output_path,
+            append=True,
+            append_by_column=True
+        )
         return True
+
+    def extract_farfield_to_matrix_dict(self, csv_file_path: str, encoding: str = "utf-8") -> List[Dict[str, Union[str, float, list]]]:
+        """
+        提取远区场CSV数据并转换为完整的矩阵格式保存
+
+        参数:
+            csv_file_path: CSV文件路径
+            encoding: 文件编码，默认为utf-8
+
+        返回:
+            List[Dict]: 包含完整矩阵数据的字典列表
+        """
+        try:
+            # 读取CSV数据
+            df = pd.read_csv(csv_file_path, encoding=encoding)
+
+            # 构建Theta和Phi数组
+            theta_vals = list(range(0, 181, 5))  # 0到180度，每5度一个点 (37个点)
+            phi_vals = list(range(-180, 181, 5))  # -180到180度，每5度一个点 (73个点)
+
+            # 初始化结果字典
+            matrix_data = {
+                "data_type": "farfield_matrix",
+                "theta_values": theta_vals,
+                "phi_values": phi_vals,
+                "theta_count": len(theta_vals),
+                "phi_count": len(phi_vals)
+            }
+
+            # 提取Gain_dB数据
+            if 'Gain_dB' in df.columns:
+                gain_data = df['Gain_dB'].tolist()
+            else:
+                # 假设第三列是Gain_dB数据
+                gain_data = df.iloc[:, 2].tolist()
+
+            # 创建完整的Theta-Phi矩阵
+            gain_matrix = []
+            for i in range(len(theta_vals)):  # 37个Theta值
+                row = []
+                for j in range(len(phi_vals)):  # 73个Phi值
+                    idx = i * len(phi_vals) + j  # 计算在线性数据中的索引
+                    if idx < len(gain_data):
+                        row.append(gain_data[idx])
+                    else:
+                        row.append(None)  # 如果数据不足，填充None
+                gain_matrix.append(row)
+
+            matrix_data["Gain_dB_matrix"] = gain_matrix
+
+            return [matrix_data]
+
+        except Exception as e:
+            raise Exception(f"处理远区场数据失败：{str(e)}")
+
 
     def extract_first_two_columns_to_dict(self, csv_file_path: str, encoding: str = "utf-8") -> List[
         Dict[str, Union[str, float]]]:

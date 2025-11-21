@@ -40,13 +40,15 @@ def to_tensor_and_device(data, device):
         data = torch.tensor(data, dtype=torch.float32)
     return data.to(device)
 
-def train_gan_model(create_antenna_data=0, model_save_path='trained_gan_model.pth'):
+def train_gan_model(create_antenna_data=0, model_save_path='trained_gan_model.pth',
+                    training_type = 's_params'):
     """
     训练GAN模型并保存
 
     Args:
         create_antenna_data: 需要生成的天线数据数量
         model_save_path: 模型保存路径
+        training_type: 训练类型 ('s_params' 或 'far_field')
     """
     print("\n" + "=" * 70)
     print("GAN 模型训练")
@@ -63,39 +65,38 @@ def train_gan_model(create_antenna_data=0, model_save_path='trained_gan_model.pt
         print(f"\n 生成{create_antenna_data}个天线数据...")
         calculate_by_hfss.Generate_test_data(create_antenna_data)
 
-    # 合并数据文件
-    print("=============================合并所有数据=============================")
-    input_pattern = "./Train_data/data_dict_pandas_*.csv"
-    output_file = "merged_detailed_antenna_data.csv"
-    header_check_count = 40
-    merge_single_line_csv_files(input_pattern, output_file, header_check_count)
-    print(f"\n=============================合并完成！=============================")
+    if training_type == 's_params':
+        # 合并数据文件
+        print("=============================合并所有数据=============================")
+        input_pattern = "./Train_data/data_dict_pandas_*.csv"
+        output_file = "merged_detailed_antenna_data.csv"
+        header_check_count = 40
+        merge_single_line_csv_files(input_pattern, output_file, header_check_count)
+        print(f"\n=============================合并完成！=============================")
+
+    elif training_type == 'far_field':
+        # 合并数据文件
+        print("=============================合并所有数据=============================")
+        input_pattern = "./Train_data/data_dict_pandas_*.csv"
+        output_file = "merged_detailed_antenna_data_far_field.csv"
+        header_check_count = 40
+        merge_single_line_csv_files(input_pattern, output_file, header_check_count)
+        print(f"\n=============================合并完成！=============================")
 
     # 加载数据
     print("=============================加载数据=============================")
     try:
         X_scaled, y, X_original, y_original = system.load_csv_data(
-            csv_file='./merged_detailed_antenna_data.csv',
+            csv_file='./merged_detailed_antenna_data_far_field.csv',
             param_cols=['patch_length', 'patch_width'],
             perf_cols=None  # 让函数自动检测列名
         )
-        print(f"=============================数据加载完成: {X_original.shape[0]}个样本=============================")
+        print(
+            f"=============================数据加载完成: {X_original.shape[0]}个样本=============================")
     except Exception as e:
         print(f"=============================❌ 数据加载失败，使用合成数据: {e}=============================")
         X_scaled, y, X_original, y_original = system.generate_synthetic_data(num_samples=create_antenna_data)
 
-    # # 应用数据增强
-    # print("=============================应用数据增强=============================")
-    # X_enhanced, y_enhanced = system.comprehensive_data_augmentation(X_original, y_original, target_samples=5000)
-    #
-    # # 重新进行归一化
-    # X_scaled_enhanced = system.scaler.fit_transform(X_enhanced)
-    # y_scaled_enhanced = system.target_scaler.fit_transform(y_enhanced)
-    #
-    # # 划分数据集并移到设备
-    # # X_train, X_val, y_train, y_val = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
-    # print("=============================划分数据集并移到设备=============================")
-    # X_train, X_val, y_train, y_val = train_test_split(X_scaled_enhanced, y_scaled_enhanced, test_size=0.2, random_state=42)
 
     # 不使用数据增强，直接对原始数据进行归一化
     X_scaled_original = system.scaler.fit_transform(X_original)
@@ -186,6 +187,7 @@ if __name__ == "__main__":
     model_save_path = 'models/trained_gan_model.pth'
 
     train_gan_model(create_antenna_data, model_save_path)
+    train_gan_model(create_antenna_data, model_save_path, 'far_field')
 
     print("\n" + "=" * 70)
     print("模型训练完成！")
