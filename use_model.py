@@ -1083,7 +1083,7 @@ if __name__ == "__main__":
 
     print("\n" + "=" * 70)
     model_info_path = 'models/multi_output_trained_model.npy'
-    result = use_multi_output_model(model_info_path, 40, 46)
+    result = use_multi_output_model(model_info_path, 39, 48.4)
     print("\n" + "=" * 70)
 
 

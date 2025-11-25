@@ -257,6 +257,8 @@ def train_multi_output_model(create_antenna_data=0, model_save_path='multi_outpu
         print(f"输入数据加载完成: {X_original.shape[0]}个样本")
         print(f"S参数数据维度: {y_s_original.shape}")
         print(f"远区场数据维度: {y_f_original.shape}")
+        print(f"数据为：{y_f_original}")
+        print("数据预处理完成！")
 
     except Exception as e:
         print(f"❌ 数据加载失败: {e}")
