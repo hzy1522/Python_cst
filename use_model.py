@@ -613,12 +613,40 @@ def use_multi_output_model(model_path, patch_length, patch_width):
         # 假设标准的 theta(181) x phi(361) 网格
         far_field_matrix = None
         if far_field_pred is not None:
-            if len(far_field_pred) == 181 * 361:
-                far_field_matrix = far_field_pred.reshape(181, 361)
+            print(f"len(far_field_pred) == {len(far_field_pred) } ")
+            if len(far_field_pred) == 37 * 73:
+                far_field_matrix = far_field_pred.reshape(37, 73)
                 print(f"   远区场矩阵维度: {far_field_matrix.shape}")
             else:
                 far_field_matrix = far_field_pred
                 print(f"   远区场数据未 reshape，保持原维度: {far_field_pred.shape}")
+
+        # 保存预测的远区场数据
+        if far_field_matrix is not None:
+            # 创建theta和phi的坐标数组
+            theta_values = np.arange(0, 181, 5)  # 0到180度，每5度一个间隔
+            phi_values = np.arange(-180, 181, 5)  # -180到180度，每5度一个间隔
+
+            # 确保数组长度与矩阵维度匹配
+            if far_field_matrix.shape[0] == len(theta_values) and far_field_matrix.shape[1] == len(phi_values):
+                # 创建DataFrame
+                data_list = []
+                for i, theta in enumerate(theta_values):
+                    for j, phi in enumerate(phi_values):
+                        data_list.append({
+                            'Theta(deg)': theta,
+                            'Phi(deg)': phi,
+                            'Gain_dB': far_field_matrix[i, j]
+                        })
+
+                far_field_df = pd.DataFrame(data_list)
+                far_field_csv_path = f'results/predicted_far_field_{patch_length}x{patch_width}.csv'
+                far_field_df.to_csv(far_field_csv_path, index=False)
+                print(f"📊 预测远区场数据已保存到: {far_field_csv_path}")
+                print("📊 预测远区场数据已绘制3D图: ./results/far_field_3d_predicted.html")
+                plot_3d_radiation_pattern_from_csv(far_field_csv_path, './results/far_field_3d_predicted.html')
+            else:
+                print(f"⚠️  远区场矩阵维度与预期不匹配: 期望({len(theta_values)}, {len(phi_values)}), 实际{far_field_matrix.shape}")
 
         result = {
             'input_dimensions': {'length': patch_length, 'width': patch_width},
@@ -665,9 +693,9 @@ def use_multi_output_model(model_path, patch_length, patch_width):
             success, freq_at_s11_min, far_field_gain, s11_min, output_file, output_file_farfield = calculate_from_hfss_py(
                 antenna_params, train_model
             )
-            # 使用示例
-            print(output_file_farfield)
+
             plot_3d_radiation_pattern_from_csv(output_file_farfield, './results/far_field_3d_hfss.html')
+
             if success and output_file:
                 print(f"  HFSS计算成功!")
                 print(f"  实际性能: S11={s11_min:.2f}dB, 频率={freq_at_s11_min:.2f}GHz, 增益={far_field_gain:.2f}dBi")
@@ -733,8 +761,8 @@ def use_multi_output_model(model_path, patch_length, patch_width):
             hfss_df.to_csv(hfss_csv_path, index=False)
             print(f"\nHFSS验证结果已保存到 {hfss_csv_path}")
 
-        # 绘制预测结果
-        plot_predictions(s_params_pred, far_field_matrix, patch_length, patch_width)
+        # # 绘制预测结果
+        # plot_predictions(s_params_pred, far_fiel_matrix, patch_length, patch_width)
 
         return result
 
@@ -1083,7 +1111,8 @@ if __name__ == "__main__":
 
     print("\n" + "=" * 70)
     model_info_path = 'models/multi_output_trained_model.npy'
-    result = use_multi_output_model(model_info_path, 39, 48.4)
+    # result = use_multi_output_model(model_info_path, 39, 48.4)
+    result = use_multi_output_model(model_info_path, 35, 50)
     print("\n" + "=" * 70)
 
 
