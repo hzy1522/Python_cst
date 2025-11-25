@@ -488,11 +488,11 @@ if __name__ == "__main__":
     # 使用已训练模型
     model_info_path = 'models/trained_gan_model_info.npy'
 
-    # target_specs = load_target_specs_from_csv('TEST_RESULT/data_dict_pandas_20251117_154211.csv')
-    # use_trained_gan_model(model_info_path, target_specs)
+    target_specs = load_target_specs_from_csv('TEST_RESULT/data_dict_pandas_20251121_111221.csv')
+    use_trained_gan_model(model_info_path, target_specs)
     #
-    # use_trained_gan_model_prediction_results()
-    use_trained_gan_model_prediction_results(patch_lengths='40', patch_widths='40')
+    use_trained_gan_model_prediction_results()
+    # use_trained_gan_model_prediction_results(patch_lengths='40', patch_widths='40')
 
     print("\n" + "=" * 70)
     print("模型使用完成！")

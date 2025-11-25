@@ -1547,10 +1547,11 @@ class PatchAntennaDesignSystem:
                 print(f"生成完成！最佳3个设计:")
                 for j, idx in enumerate(best_indices):
                     design = generated_params_denorm[idx]
-                    perf = forward_predicted_perfs_denorm[idx]
-                    error = performance_errors[idx]
+                    # perf = forward_predicted_perfs_denorm[idx]
+                    # error = performance_errors[idx]
                     print(f"  设计 {j+1}: 长度={design[0]:.2f}mm, 宽度={design[1]:.2f}mm, "
-                          f"S11={perf[0]:.2f}dB, 频率={perf[1]:.2f}GHz, 增益={perf[2]:.2f}dBi, 误差={error:.3f}")
+                          # f"S11={perf[0]:.2f}dB, 频率={perf[1]:.2f}GHz, 增益={perf[2]:.2f}dBi, 误差={error:.3f}"
+                          )
 
                 all_designs.extend(generated_params_denorm[best_indices])
                 # 保存完整性能指标
