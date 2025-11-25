@@ -66,33 +66,30 @@ def train_gan_model(create_antenna_data=0, model_save_path='trained_gan_model.pt
         calculate_by_hfss.Generate_test_data(create_antenna_data)
 
     if training_type == 's_params':
-        # 合并数据文件
-        print("=============================合并所有数据=============================")
-        input_pattern = "./Train_data/data_dict_pandas_*.csv"
         output_file = "merged_detailed_antenna_data.csv"
-        header_check_count = 40
-        merge_single_line_csv_files(input_pattern, output_file, header_check_count)
-        print(f"\n=============================合并完成！=============================")
-
     elif training_type == 'far_field':
-        # 合并数据文件
-        print("=============================合并所有数据=============================")
-        input_pattern = "./Train_data/data_dict_pandas_*.csv"
         output_file = "merged_detailed_antenna_data_far_field.csv"
-        header_check_count = 40
-        merge_single_line_csv_files(input_pattern, output_file, header_check_count)
-        print(f"\n=============================合并完成！=============================")
+    else:
+        print("无效的训练类型")
+        return  -1
+    # 合并数据文件
+    print("=============================合并所有数据=============================")
+    input_pattern = "./Train_data/data_dict_pandas_*.csv"
+    header_check_count = 40
+    merge_single_line_csv_files(input_pattern, output_file, header_check_count)
+    print(f"\n=============================合并完成！=============================")
 
     # 加载数据
     print("=============================加载数据=============================")
     try:
         X_scaled, y, X_original, y_original = system.load_csv_data(
-            csv_file='./merged_detailed_antenna_data_far_field.csv',
+            # csv_file='./merged_detailed_antenna_data_far_field.csv',
+            csv_file = output_file,
             param_cols=['patch_length', 'patch_width'],
             perf_cols=None  # 让函数自动检测列名
         )
-        print(
-            f"=============================数据加载完成: {X_original.shape[0]}个样本=============================")
+        print(f"=============================数据加载完成: {X_original.shape[0]}个样本=============================")
+        print(f"从{output_file}中加载数据成功！")
     except Exception as e:
         print(f"=============================❌ 数据加载失败，使用合成数据: {e}=============================")
         X_scaled, y, X_original, y_original = system.generate_synthetic_data(num_samples=create_antenna_data)

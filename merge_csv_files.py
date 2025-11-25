@@ -224,16 +224,6 @@ def merge_single_line_csv_files(input_pattern, output_file, header_check_count=4
                     except (ValueError, IndexError):
                         filtered_data.append(row)
 
-                # for row in data_rows:
-                #     try:
-                #         min_value = float(row[min_value_col_index])
-                #         if min_value <= -5.0:
-                #             filtered_data.append(row)
-                #         else:
-                #             removed_count += 1
-                #     except (ValueError, IndexError):
-                #         filtered_data.append(row)
-
                 print(f"📊 筛选统计:")
                 print(f"   原始数据: {len(data_rows)} 行")
                 print(f"   筛选后: {len(filtered_data)} 行")
