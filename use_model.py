@@ -8,7 +8,11 @@ import os
 import numpy as np
 import torch
 import pandas as pd
+from matplotlib import pyplot as plt
 
+import plotly.graph_objects as go
+import plotly.offline as pyo
+from scipy.interpolate import griddata
 
 # 添加当前目录到系统路径
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -368,7 +372,7 @@ def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan
         # 调用HFSS计算
         train_model = False
         try:
-            success, freq_at_s11_min, far_field_gain, s11_min, output_file = calculate_from_hfss_py(
+            success, freq_at_s11_min, far_field_gain, s11_min, output_file, output_file_farfield = calculate_from_hfss_py(
                 antenna_params, train_model
             )
 
@@ -488,26 +492,601 @@ def load_target_specs_from_csv(csv_file_path):
 
     return target_specs
 
+def use_multi_output_model(model_path, patch_length, patch_width):
+    """
+    使用训练好的多输出模型进行预测
+
+    Args:
+        model_path: 模型保存路径
+        patch_length: 贴片长度(mm)
+        patch_width: 贴片宽度(mm)
+
+    Returns:
+        dict: 包含预测结果的字典
+    """
+    # 加载模型和相关信息
+    # 在 use_multi_output_model 函数中添加文件检查
+    model_path = 'models/multi_output_trained_model.pth'
+    info_path = model_path.replace('.pth', '_info.npy')
+
+    # 检查文件是否存在
+    if not os.path.exists(model_path):
+        print(f"⚠️  模型文件不存在: {model_path}")
+        return {
+            'input_dimensions': {'length': patch_length, 'width': patch_width},
+            'predicted_s_parameters': None,
+            'predicted_far_field_pattern': None,
+            'error': '模型文件不存在'
+        }
+
+    if not os.path.exists(info_path):
+        raise FileNotFoundError(f"未找到模型信息文件: {info_path}")
+
+    training_info = np.load(info_path, allow_pickle=True).item()
+
+    # 初始化系统
+    system = PatchAntennaDesignSystem()
+    device = get_device()
+    system.device = device
+
+    # 恢复标准化器状态
+    if 'scalers' in training_info:
+        from sklearn.preprocessing import StandardScaler, MinMaxScaler
+
+        # 重建 input_scaler (StandardScaler)
+        system.scaler = StandardScaler()
+        input_scaler_data = training_info['scalers']['input_scaler']
+        system.scaler.scale_ = input_scaler_data['scale_']
+        system.scaler.mean_ = input_scaler_data['mean_']
+        system.scaler.var_ = input_scaler_data['var_']
+        system.scaler.n_features_in_ = input_scaler_data.get('n_features_in_',
+                                   len(input_scaler_data['scale_']) if 'scale_' in input_scaler_data else 0)
+        system.scaler.n_samples_seen_ = input_scaler_data.get('n_samples_seen_', 1)
+
+        # 检查是否存在 s_params_scaler，如果不存在则使用默认的 target_scaler
+        if 's_params_scaler' in training_info['scalers']:
+            # 重建 s_params_scaler (MinMaxScaler)
+            system.target_scaler = MinMaxScaler()
+            s_params_scaler_data = training_info['scalers']['s_params_scaler']
+            system.target_scaler.scale_ = s_params_scaler_data['scale_']
+            system.target_scaler.min_ = s_params_scaler_data['min_']
+            system.target_scaler.data_min_ = s_params_scaler_data['data_min_']
+            system.target_scaler.data_max_ = s_params_scaler_data['data_max_']
+            system.target_scaler.data_range_ = s_params_scaler_data['data_range_']
+            system.target_scaler.n_features_in_ = s_params_scaler_data.get('n_features_in_',
+                                            len(s_params_scaler_data['scale_']) if 'scale_' in s_params_scaler_data else 0)
+            system.target_scaler.n_samples_seen_ = s_params_scaler_data.get('n_samples_seen_', 1)
+        else:
+            # 使用旧版本的 target_scaler
+            system.target_scaler = MinMaxScaler()
+            target_scaler_data = training_info['scalers']['target_scaler']
+            system.target_scaler.scale_ = target_scaler_data['scale_']
+            system.target_scaler.min_ = target_scaler_data['min_']
+            system.target_scaler.data_min_ = target_scaler_data['data_min_']
+            system.target_scaler.data_max_ = target_scaler_data['data_max_']
+            system.target_scaler.data_range_ = target_scaler_data['data_range_']
+            system.target_scaler.n_features_in_ = target_scaler_data.get('n_features_in_',
+                                            len(target_scaler_data['scale_']) if 'scale_' in target_scaler_data else 0)
+            system.target_scaler.n_samples_seen_ = target_scaler_data.get('n_samples_seen_', 1)
+
+        # 检查是否存在 far_field_scaler
+        if 'far_field_scaler' in training_info['scalers']:
+            # 重建 far_field_scaler (MinMaxScaler)
+            system.far_field_scaler = MinMaxScaler()
+            far_field_scaler_data = training_info['scalers']['far_field_scaler']
+            system.far_field_scaler.scale_ = far_field_scaler_data['scale_']
+            system.far_field_scaler.min_ = far_field_scaler_data['min_']
+            system.far_field_scaler.data_min_ = far_field_scaler_data['data_min_']
+            system.far_field_scaler.data_max_ = far_field_scaler_data['data_max_']
+            system.far_field_scaler.data_range_ = far_field_scaler_data['data_range_']
+            system.far_field_scaler.n_features_in_ = far_field_scaler_data.get('n_features_in_',
+                                                 len(far_field_scaler_data['scale_']) if 'scale_' in far_field_scaler_data else 0)
+            system.far_field_scaler.n_samples_seen_ = far_field_scaler_data.get('n_samples_seen_', 1)
+        else:
+            # 如果不存在远区场标准化器，创建一个默认的
+            from sklearn.preprocessing import MinMaxScaler
+            system.far_field_scaler = MinMaxScaler()
+
+    # 获取远区场维度信息
+    actual_far_field_dim = training_info.get('actual_far_field_dim',
+                                           training_info.get('y_f_train_shape', [0, 2701])[1])
+    print(f"使用远区场输出维度: {actual_far_field_dim}")
+
+    # 进行预测
+    try:
+        print(f"🔍 开始预测: 长度={patch_length}mm, 宽度={patch_width}mm")
+
+        # 在调用预测方法前确保模型已正确初始化
+        s_params_pred, far_field_pred = system.predict_s_params_and_far_field(
+            patch_length, patch_width, far_field_dim=actual_far_field_dim
+        )
+
+        print(f"📊 预测结果:")
+        print(f"   S参数预测: {'成功' if s_params_pred is not None else '失败'}")
+        print(f"   远区场预测: {'成功' if far_field_pred is not None else '失败'}")
+
+        if far_field_pred is not None:
+            print(f"   远区场数据维度: {far_field_pred.shape}")
+            print(f"   远区场数据范围: [{np.min(far_field_pred):.2f}, {np.max(far_field_pred):.2f}]")
+
+        # 如果需要，可以将远区场数据重塑为二维矩阵
+        # 假设标准的 theta(181) x phi(361) 网格
+        far_field_matrix = None
+        if far_field_pred is not None:
+            if len(far_field_pred) == 181 * 361:
+                far_field_matrix = far_field_pred.reshape(181, 361)
+                print(f"   远区场矩阵维度: {far_field_matrix.shape}")
+            else:
+                far_field_matrix = far_field_pred
+                print(f"   远区场数据未 reshape，保持原维度: {far_field_pred.shape}")
+
+        result = {
+            'input_dimensions': {'length': patch_length, 'width': patch_width},
+            'predicted_s_parameters': s_params_pred,
+            'predicted_far_field_pattern': far_field_pred,
+            'predicted_far_field_matrix': far_field_matrix
+        }
+
+        print(f"✅ 预测完成!")
+        print(f"   S参数预测维度: {s_params_pred.shape if s_params_pred is not None else 'None'}")
+        print(f"   远区场预测维度: {far_field_pred.shape if far_field_pred is not None else 'None'}")
+
+        #调用hfss计算
+        hfss_results = []
+        # 查找S11最小值及其对应的频率点
+        s11_min_predict = np.min(s_params_pred)
+        min_index = np.argmin(s_params_pred)
+        freq_points = np.linspace(2.0, 3.0, len(s_params_pred))  # 201个频率点从2.0GHz到3.0GHz
+        freq_at_s11_min_predict = freq_points[min_index]
+        # HFSS仿真参数设置
+        antenna_params = {
+            "unit": "GHz",
+            "patch_length": patch_length,
+            "patch_width": patch_width,
+            "patch_name": "Patch",
+            "freq_step": "0.01GHz",
+            "num_of_freq_points": 201,
+            "start_frequency": 2,
+            "stop_frequency": 3,
+            "center_frequency": 2.5,
+            "sweep_type": "Interpolating",
+            "sub_length": 50,
+            "sub_width": 60,
+            "sub_high": 1.575,
+            "feed_r1": 0.5,
+            "feed_h": 1.575,
+            "feed_center": 6.3,
+            "lumpedport_r": 1.5,
+            "lumpedport_D": 2.3 / 2,
+        }
+        # 调用HFSS计算
+        train_model = False
+        try:
+            success, freq_at_s11_min, far_field_gain, s11_min, output_file, output_file_farfield = calculate_from_hfss_py(
+                antenna_params, train_model
+            )
+            # 使用示例
+            print(output_file_farfield)
+            plot_3d_radiation_pattern_from_csv(output_file_farfield, './results/far_field_3d_hfss.html')
+            if success and output_file:
+                print(f"  HFSS计算成功!")
+                print(f"  实际性能: S11={s11_min:.2f}dB, 频率={freq_at_s11_min:.2f}GHz, 增益={far_field_gain:.2f}dBi")
+                print(f"  模型预测性能: S11={s11_min_predict:.2f}dB, "
+                      f"频率={freq_at_s11_min_predict:.2f}GHz, "
+                      f"增益={np.max(far_field_pred):.2f}dBi"
+                      )
+
+                # 保存结果
+                hfss_results.append({
+                    # 'design_index': i,
+                    'patch_length': patch_length,
+                    'patch_width': patch_width,
+                    'predicted_s11': s11_min_predict,
+                    'predicted_freq': freq_at_s11_min_predict,
+                    'predicted_gain': far_field_pred,
+                    'actual_s11': s11_min,
+                    'actual_freq': freq_at_s11_min,
+                    'actual_gain': far_field_gain,
+                    'output_file': output_file
+                })
+
+                # 绘制S11对比图
+                system.plot_s11_comparison_advanced(
+                    float(patch_length), float(patch_width),
+                    output_file, frequency_column=0, s11_column=1,
+                    predict_s11_curve=s_params_pred
+                )
+
+            else:
+                print(f"  HFSS计算失败")
+                hfss_results.append({
+                    # 'design_index': i,
+                    'patch_length': patch_length,
+                    'patch_width': patch_width,
+                    'predicted_s11': s11_min_predict,
+                    'predicted_freq': freq_at_s11_min_predict,
+                    'predicted_gain': far_field_pred,
+                    'actual_s11': None,
+                    'actual_freq': None,
+                    'actual_gain': None,
+                    'output_file': None
+                })
+        except Exception as e:
+            print(f"  HFSS计算出错: {e}")
+            hfss_results.append({
+                # 'design_index': i,
+                    'patch_length': patch_length,
+                    'patch_width': patch_width,
+                'predicted_s11': s11_min_predict,
+                'predicted_freq': freq_at_s11_min_predict,
+                'predicted_gain': far_field_pred,
+                'actual_s11': None,
+                'actual_freq': None,
+                'actual_gain': None,
+                'output_file': None
+            })
+
+        # 6. 保存HFSS验证结果
+        if hfss_results:
+            hfss_df = pd.DataFrame(hfss_results)
+            hfss_csv_path = 'results/hfss_validation_results.csv'
+            hfss_df.to_csv(hfss_csv_path, index=False)
+            print(f"\nHFSS验证结果已保存到 {hfss_csv_path}")
+
+        # 绘制预测结果
+        plot_predictions(s_params_pred, far_field_matrix, patch_length, patch_width)
+
+        return result
+
+    except Exception as e:
+        print(f"❌ 预测过程中出错: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            'input_dimensions': {'length': patch_length, 'width': patch_width},
+            'predicted_s_parameters': None,
+            'predicted_far_field_pattern': None,
+            'error': str(e)
+        }
+
+def plot_predictions(s_params_pred, far_field_pred, patch_length, patch_width):
+    """
+    绘制预测结果
+
+    Args:
+        s_params_pred: 预测的S参数数据
+        far_field_pred: 预测的远区场一维数据
+        patch_length: 贴片长度
+        patch_width: 贴片宽度
+    """
+    # 创建保存目录
+    if not os.path.exists('results'):
+        os.makedirs('results')
+
+    # 绘制S参数曲线
+    if s_params_pred is not None:
+        plt.figure(figsize=(12, 8))
+
+        # 生成频率点
+        frequencies = np.linspace(2.0, 3.0, len(s_params_pred))
+
+        plt.plot(frequencies, s_params_pred, linewidth=2, color='blue', marker='o', markersize=4)
+        plt.xlabel('频率 (GHz)')
+        plt.ylabel('S11 (dB)')
+        plt.title(f'预测S11参数曲线\n(贴片尺寸: {patch_length}×{patch_width}mm)')
+        plt.grid(True, alpha=0.3)
+
+        # 标注S11最小值
+        s11_min = np.min(s_params_pred)
+        min_freq_idx = np.argmin(s_params_pred)
+        min_freq = frequencies[min_freq_idx]
+        plt.annotate(f'最小值: {s11_min:.2f}dB\n频率: {min_freq:.3f}GHz',
+                    xy=(min_freq, s11_min),
+                    xytext=(min_freq+0.1, s11_min+5),
+                    arrowprops=dict(arrowstyle='->', color='red'),
+                    bbox=dict(boxstyle='round,pad=0.3', facecolor='yellow', alpha=0.7))
+
+        plt.tight_layout()
+        s_params_plot_path = f'results/s_params_prediction_{patch_length}x{patch_width}.png'
+        plt.savefig(s_params_plot_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"📊 S参数预测图已保存到: {s_params_plot_path}")
+
+    # 绘制远区场方向图
+    if far_field_pred is not None:
+        # 将一维远区场数据重新reshape为极坐标格式 (theta=37, phi=73)
+        try:
+            # 检查数据长度是否匹配
+            expected_size = 37 * 73
+            if len(far_field_pred) != expected_size:
+                print(f"⚠️  远区场数据长度不匹配: 期望 {expected_size}, 实际 {len(far_field_pred)}")
+                # 尝试使用实际长度进行reshape
+                far_field_matrix = far_field_pred.reshape(37, -1)
+            else:
+                far_field_matrix = far_field_pred.reshape(37, 73)
+
+            print(f"📊 远区场数据已reshape为: {far_field_matrix.shape}")
+
+        except Exception as e:
+            print(f"⚠️  远区场数据reshape失败: {e}")
+            return
+
+        # 创建单独的远区场方向图
+        # 1. 水平面方向图 (theta=90°切面)
+        plt.figure(figsize=(10, 6))
+        phi_deg = np.linspace(0, 360, far_field_matrix.shape[1])
+        # 取theta=90°的切面（大约在中间位置）
+        theta_90_idx = far_field_matrix.shape[0] // 2
+        horizontal_pattern = far_field_matrix[theta_90_idx, :]
+
+        # 为了闭合图形，添加第一个点到末尾
+        phi_deg_closed = np.append(phi_deg, 360)
+        horizontal_pattern_closed = np.append(horizontal_pattern, horizontal_pattern[0])
+
+        plt.polar(np.deg2rad(phi_deg_closed), horizontal_pattern_closed, linewidth=2)
+        plt.title(f'水平面方向图 (θ=90°)\n(贴片尺寸: {patch_length}×{patch_width}mm)')
+        plt.tight_layout()
+        horizontal_plot_path = f'results/horizontal_pattern_{patch_length}x{patch_width}.png'
+        plt.savefig(horizontal_plot_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"📡 水平面方向图已保存到: {horizontal_plot_path}")
+
+        # 2. 垂直面方向图 (phi=0°和phi=90°切面)
+        plt.figure(figsize=(10, 6))
+        theta_deg = np.linspace(0, 180, far_field_matrix.shape[0])
+
+        # phi=0°切面
+        vertical_pattern_0 = far_field_matrix[:, 0]
+        plt.plot(theta_deg, vertical_pattern_0, label='φ=0°', linewidth=2)
+
+        # phi=90°切面
+        phi_90_idx = min(18, far_field_matrix.shape[1]-1)
+        vertical_pattern_90 = far_field_matrix[:, phi_90_idx]
+        plt.plot(theta_deg, vertical_pattern_90, label='φ=90°', linewidth=2)
+
+        plt.xlabel('θ (度)')
+        plt.ylabel('增益 (dBi)')
+        plt.title(f'垂直面方向图\n(贴片尺寸: {patch_length}×{patch_width}mm)')
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        vertical_plot_path = f'results/vertical_pattern_{patch_length}x{patch_width}.png'
+        plt.savefig(vertical_plot_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"📡 垂直面方向图已保存到: {vertical_plot_path}")
+
+        # 3. 3D方向图
+        fig = plt.figure(figsize=(12, 10))
+        ax = fig.add_subplot(111, projection='3d')
+        theta = np.linspace(0, np.pi, far_field_matrix.shape[0])
+        phi = np.linspace(0, 2*np.pi, far_field_matrix.shape[1])
+        Theta, Phi = np.meshgrid(theta, phi, indexing='ij')
+
+        # 转换为笛卡尔坐标
+        R = far_field_matrix
+        X = R * np.sin(Theta) * np.cos(Phi)
+        Y = R * np.sin(Theta) * np.sin(Phi)
+        Z = R * np.cos(Theta)
+
+        surf = ax.plot_surface(X, Y, Z, cmap='viridis', alpha=0.8)
+        # 设置坐标轴标签（使用极坐标描述）
+        ax.set_xlabel('θ (极角) sin(θ)cos(φ)')
+        ax.set_ylabel('θ (极角) sin(θ)sin(φ)')
+        ax.set_zlabel('θ (极角) cos(θ)')
+
+        # ax.set_xlabel('X')
+        # ax.set_ylabel('Y')
+        # ax.set_zlabel('Z')
+        # 设置标题
+        ax.set_title(f'3D远区场方向图\n(贴片尺寸: {patch_length}×{patch_width}mm)')
+        # 添加颜色条
+        fig.colorbar(surf, ax=ax, shrink=0.5)
+        plt.tight_layout()
+        far_field_3d_plot_path = f'results/far_field_3d_{patch_length}x{patch_width}.png'
+        plt.savefig(far_field_3d_plot_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"📡 3D远区场方向图已保存到: {far_field_3d_plot_path}")
+
+        import plotly.graph_objects as go
+        import plotly.offline as pyo
+
+        # 使用plotly创建交互式3D图
+        fig = go.Figure(data=[go.Surface(x=X, y=Y, z=Z, colorscale='Viridis')])
+
+        fig.update_layout(
+            title=f'3D远区场方向图 (贴片尺寸: {patch_length}×{patch_width}mm)',
+            scene=dict(
+                # xaxis_title='X (径向方向)',
+                # yaxis_title='Y (径向方向)',
+                # zaxis_title='Z (径向方向)',
+                xaxis_title='θ (极角) sin(θ)cos(φ)',
+                yaxis_title='θ (极角) sin(θ)sin(φ)',
+                zaxis_title='θ (极角) cos(θ)',
+                camera_eye=dict(x=1.5, y=1.5, z=1.5)
+            ),
+            width=800,
+            height=600
+        )
+
+        # 在现有代码基础上添加参考线
+        # 添加主要的极角参考线
+        theta_lines = np.linspace(0, np.pi, 7)
+        phi_lines = np.linspace(0, 2*np.pi, 13)
+
+        for theta in theta_lines:
+            for phi in [0, np.pi/2, np.pi, 3*np.pi/2]:
+                r_vals = np.linspace(0, np.max(R), 50)
+                x_line = r_vals * np.sin(theta) * np.cos(phi)
+                y_line = r_vals * np.sin(theta) * np.sin(phi)
+                z_line = r_vals * np.cos(theta)
+                fig.add_trace(go.Scatter3d(
+                    x=x_line, y=y_line, z=z_line,
+                    mode='lines',
+                    line=dict(color='red', width=2),
+                    showlegend=False,
+                    opacity=0.5
+                ))
+        # 使用更合适的颜色映射
+        fig = go.Figure(data=[go.Surface(
+            x=X, y=Y, z=Z,
+            surfacecolor=R,  # 使用增益值作为颜色映射
+            colorscale='Viridis',
+            showscale=True,
+            colorbar=dict(title="增益 (dBi)")
+        )])
+
+
+        # 保存为HTML文件以支持完整交互
+        plotly_plot_path = f'results/far_field_3d_interactive_{patch_length}x{patch_width}.html'
+        pyo.plot(fig, filename=plotly_plot_path, auto_open=False)
+        print(f"🌐 交互式3D方向图已保存到: {plotly_plot_path}")
+
+    print("✅ 预测结果可视化完成！")
+
+
+def plot_3d_radiation_pattern_from_csv(csv_file_path, output_html_path=None):
+    """
+    从CSV文件读取远区场数据并绘制3D方向图
+
+    Args:
+        csv_file_path: CSV文件路径，应包含 Theta(deg), Phi(deg), Gain_dB 三列
+        output_html_path: 输出HTML文件路径（可选）
+    """
+    # 读取CSV数据
+    df = pd.read_csv(csv_file_path)
+
+    # 检查必需的列是否存在
+    required_columns = ['Theta(deg)', 'Phi(deg)', 'Gain_dB']
+    for col in required_columns:
+        if col not in df.columns:
+            raise ValueError(f"缺少必需的列: {col}")
+
+    # 提取数据
+    theta_deg = df['Theta(deg)'].values
+    phi_deg = df['Phi(deg)'].values
+    gain_db = df['Gain_dB'].values
+
+    # 转换为弧度
+    theta_rad = np.deg2rad(theta_deg)
+    phi_rad = np.deg2rad(phi_deg)
+
+    # 转换为笛卡尔坐标
+    # 假设增益值直接作为径向距离
+    r = gain_db - np.min(gain_db) + 1  # 偏移以确保正值
+    x = r * np.sin(theta_rad) * np.cos(phi_rad)
+    y = r * np.sin(theta_rad) * np.sin(phi_rad)
+    z = r * np.cos(theta_rad)
+
+    # 创建3D散点图
+    fig = go.Figure()
+
+    # 添加散点数据
+    fig.add_trace(go.Scatter3d(
+        x=x, y=y, z=z,
+        mode='markers',
+        marker=dict(
+            size=4,
+            color=gain_db,
+            colorscale='Viridis',
+            colorbar=dict(title="增益 (dBi)"),
+            showscale=True
+        ),
+        text=[f'θ: {t:.1f}°<br>φ: {p:.1f}°<br>Gain: {g:.2f} dBi'
+              for t, p, g in zip(theta_deg, phi_deg, gain_db)],
+        hoverinfo='text',
+        name='远区场数据'
+    ))
+
+    # 如果数据点较少，可以创建插值表面
+    if len(df) > 100:  # 数据点足够多时创建表面
+        # 创建规则网格用于插值
+        theta_grid = np.linspace(0, np.pi, 50)
+        phi_grid = np.linspace(0, 2*np.pi, 100)
+        Theta_grid, Phi_grid = np.meshgrid(theta_grid, phi_grid)
+
+        # 插值到规则网格
+        points = np.column_stack((theta_rad, phi_rad))
+        values = gain_db
+        grid_points = np.column_stack((
+            Theta_grid.ravel(),
+            Phi_grid.ravel()
+        ))
+
+        try:
+            interpolated_gain = griddata(
+                points, values, grid_points,
+                method='cubic', fill_value=np.min(gain_db)
+            ).reshape(Theta_grid.shape)
+
+            # 转换插值数据到笛卡尔坐标
+            R_grid = interpolated_gain - np.min(interpolated_gain) + 1
+            X_grid = R_grid * np.sin(Theta_grid) * np.cos(Phi_grid)
+            Y_grid = R_grid * np.sin(Theta_grid) * np.sin(Phi_grid)
+            Z_grid = R_grid * np.cos(Theta_grid)
+
+            # 添加插值表面
+            fig.add_trace(go.Surface(
+                x=X_grid, y=Y_grid, z=Z_grid,
+                surfacecolor=interpolated_gain,
+                colorscale='Viridis',
+                opacity=0.7,
+                showscale=False,
+                name='插值表面'
+            ))
+        except Exception as e:
+            print(f"插值失败: {e}")
+
+    # 设置布局
+    fig.update_layout(
+        title=f'3D远区场方向图<br>数据来源: {csv_file_path}',
+        scene=dict(
+            xaxis_title='X (径向方向)',
+            yaxis_title='Y (径向方向)',
+            zaxis_title='Z (径向方向)',
+            aspectmode='data'
+        ),
+        width=800,
+        height=600
+    )
+
+    # 保存或显示图表
+    if output_html_path:
+        pyo.plot(fig, filename=output_html_path, auto_open=False)
+        print(f"3D方向图已保存到: {output_html_path}")
+    else:
+        fig.show()
+
+    return fig
+
+
+
 
 if __name__ == "__main__":
     print("贴片天线GAN模型使用系统")
     print("=" * 70)
 
     # 使用已训练模型
-    model_info_path = 'models/trained_gan_model_info.npy'
+    # model_info_path = 'models/trained_gan_model_info.npy'
 
-    target_specs = load_target_specs_from_csv('TEST_RESULT/data_dict_pandas_20251121_111221.csv')
-    use_trained_gan_model(model_info_path, target_specs)
-
-    s11_min_predict, freq_at_s11_min_predict, s11_curve_predict, s11_min, freq_at_s11_min, far_field_gain = use_trained_gan_model_prediction_results()
-    # s11_min_predict, freq_at_s11_min_predict, s11_curve_predict, s11_min, freq_at_s11_min, far_field_gain = use_trained_gan_model_prediction_results(patch_lengths='40', patch_widths='40')
+    # target_specs = load_target_specs_from_csv('TEST_RESULT/data_dict_pandas_20251121_111221.csv')
+    # use_trained_gan_model(model_info_path, target_specs)
+    #
+    # s11_min_predict, freq_at_s11_min_predict, s11_curve_predict, s11_min, freq_at_s11_min, far_field_gain = use_trained_gan_model_prediction_results()
+    # # s11_min_predict, freq_at_s11_min_predict, s11_curve_predict, s11_min, freq_at_s11_min, far_field_gain = use_trained_gan_model_prediction_results(patch_lengths='40', patch_widths='40')
+    # print("\n" + "=" * 70)
+    # print(f"  实际性能: S11={s11_min:.2f}dB, 频率={freq_at_s11_min:.2f}GHz, 增益={far_field_gain:.2f}dBi")
+    # print(f"  模型预测性能: S11={s11_min_predict:.2f}dB, "
+    #       f"频率={freq_at_s11_min_predict:.2f}GHz, "
+    #       # f"增益={far_field_gain_predict:.2f}dBi"
+    #       )
+    # print("\n" + "=" * 70)
 
     print("\n" + "=" * 70)
-    print(f"  实际性能: S11={s11_min:.2f}dB, 频率={freq_at_s11_min:.2f}GHz, 增益={far_field_gain:.2f}dBi")
-    print(f"  模型预测性能: S11={s11_min_predict:.2f}dB, "
-          f"频率={freq_at_s11_min_predict:.2f}GHz, "
-          # f"增益={far_field_gain_predict:.2f}dBi"
-          )
+    model_info_path = 'models/multi_output_trained_model.npy'
+    result = use_multi_output_model(model_info_path, 40, 46)
+    print("\n" + "=" * 70)
+
+
     print("\n" + "=" * 70)
     print("模型使用完成！")
     print("=" * 70)

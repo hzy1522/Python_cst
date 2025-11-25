@@ -36,6 +36,7 @@ class AdvancedHFSSEntennaSimulator:
                  NUM_CORES=None,
                  antenna_params = None,):
 
+        self.output_file_farfield = None
         self.temp_folder = temp_folder
         self.NG_MODE = NG_MODE
         self.AEDT_VERSION = AEDT_VERSION
@@ -114,7 +115,7 @@ class AdvancedHFSSEntennaSimulator:
             #清理
             self.temp_folder.cleanup()
 
-        return success, self.fre_value, self.gain_value, self.s_parms_min, self.output_file
+        return success, self.fre_value, self.gain_value, self.s_parms_min, self.output_file, self.output_file_farfield
 
     def start_hfss_simulation(self):
         print("=" * 80)
@@ -446,6 +447,8 @@ class AdvancedHFSSEntennaSimulator:
 
         csv_file_path, output_path = self.add_timestamp_to_filename(csv_file_path_base, output_path_base)
         self.save_farfield_data_to_csv(data, csv_file_path)
+
+        self.output_file_farfield = csv_file_path
 
         # --------------------------------------------------提取增益最大结果并保存-------------------------------------------------
         # 替换为你的CSV文件路径
@@ -1200,13 +1203,13 @@ def calculate_from_hfss(antenna_params, train_model):
 
     simulator = AdvancedHFSSEntennaSimulator(temp_folder, NG_MODE, AEDT_VERSION, NUM_CORES, antenna_params)
 
-    success, fre_value, gain_value, s_prams_min, output_file = simulator.run_full_hfss_simulation(train_model)
+    success, fre_value, gain_value, s_prams_min, output_file, output_file_farfield = simulator.run_full_hfss_simulation(train_model)
 
     if success:
         print("\n" + "="*80)
         print("天线仿真成功完成！")
         print("="*80)
-        return success, fre_value, gain_value, s_prams_min, output_file
+        return success, fre_value, gain_value, s_prams_min, output_file, output_file_farfield
     else:
         print("\n" + "="*80)
         print("天线仿真失败")
@@ -1250,7 +1253,7 @@ def main():
 
     simulator = AdvancedHFSSEntennaSimulator(temp_folder, NG_MODE, AEDT_VERSION, NUM_CORES, antenna_params)
     train_model = False
-    success, fre_value, gain_value, s_prams_min, output_file  = simulator.run_full_hfss_simulation(train_model)
+    success, fre_value, gain_value, s_prams_min, output_file, output_file_farfield  = simulator.run_full_hfss_simulation(train_model)
 
     if success:
         print("\n" + "="*80)

@@ -175,17 +175,278 @@ def train_gan_model(create_antenna_data=0, model_save_path='trained_gan_model.pt
 
     return training_info
 
+def train_multi_output_model(create_antenna_data=0, model_save_path='multi_output_model.pth'):
+    """
+    训练多输出模型，同时预测S参数曲线和远区场方向图
+
+    Args:
+        create_antenna_data: 需要生成的天线数据数量
+        model_save_path: 模型保存路径
+    """
+    print("\n" + "=" * 70)
+    print("多输出GAN模型训练")
+    print("=" * 70)
+
+    device = get_device()
+    system = PatchAntennaDesignSystem()
+
+    # 1. 数据准备阶段
+    print("\n1. 准备天线数据...")
+
+    # 生成天线数据（如果需要）
+    if create_antenna_data > 0:
+        print(f"\n 生成{create_antenna_data}个天线数据...")
+        calculate_by_hfss.Generate_test_data(create_antenna_data)
+
+    # 合并包含S参数和远区场的数据
+    print("=============================合并所有数据=============================")
+    input_pattern = "./RESULT/data_dict_pandas_*.csv"
+    output_file = "merged_multi_output_data.csv"
+    header_check_count = 40
+    merge_single_line_csv_files(input_pattern, output_file, header_check_count)
+    print("=============================合并完成！=============================")
+
+    # 加载输入数据（贴片尺寸）
+    print("=============================加载数据=============================")
+    try:
+        # 加载输入参数
+        df = pd.read_csv(output_file)
+        X_original = df[['patch_length', 'patch_width']].values
+
+        # 加载S参数输出数据（自动检测S参数列）
+        s_param_columns = [col for col in df.columns if col.startswith(('S11_', 's11_'))]
+        if not s_param_columns:
+            # 如果没有找到S参数列，尝试使用load_csv_data方法
+            X_s, y_s, X_s_original, y_s_original = system.load_csv_data(
+                csv_file=output_file,
+                param_cols=['patch_length', 'patch_width'],
+                perf_cols=None  # 让函数自动检测列名
+            )
+            y_s_original = y_s_original
+        else:
+            y_s_original = df[s_param_columns].values
+
+        # 加载远区场输出数据（从Gain_dB_matrix列）
+        y_far_field_list = []
+        actual_far_field_dim = None
+
+        for idx, row in df.iterrows():
+            try:
+                # 从 Gain_dB_matrix 列提取二维矩阵数据
+                matrix_str = row['Gain_dB_matrix']
+                # 安全地解析字符串形式的矩阵
+                matrix_data = np.array(eval(matrix_str))
+
+                # 记录实际的远区场维度
+                if actual_far_field_dim is None:
+                    actual_far_field_dim = matrix_data.size
+                    print(f"远区场矩阵实际维度: {matrix_data.shape}, 展平后: {actual_far_field_dim}")
+
+                y_far_field_list.append(matrix_data.flatten())  # 展平为一维数组以便处理
+            except Exception as parse_error:
+                print(f"解析第{idx}行远区场数据时出错: {parse_error}")
+                # 使用默认大小填充
+                if actual_far_field_dim:
+                    y_far_field_list.append(np.zeros(actual_far_field_dim))
+                else:
+                    # 假设标准尺寸 181x361 (theta: 0-180度, phi: 0-360度)
+                    y_far_field_list.append(np.zeros(181 * 361))
+
+        y_f_original = np.array(y_far_field_list)
+
+        print(f"输入数据加载完成: {X_original.shape[0]}个样本")
+        print(f"S参数数据维度: {y_s_original.shape}")
+        print(f"远区场数据维度: {y_f_original.shape}")
+
+    except Exception as e:
+        print(f"❌ 数据加载失败: {e}")
+        return
+
+    # 数据标准化和划分
+    print("=============================数据预处理=============================")
+
+    # 统一输入特征范围
+    X_scaled_original = system.scaler.fit_transform(X_original)
+
+    # 分别标准化输出
+    y_s_scaled = system.target_scaler.fit_transform(y_s_original)
+
+    # 为远区场创建独立的标准化器
+    from sklearn.preprocessing import MinMaxScaler
+    far_field_scaler = MinMaxScaler()
+    y_f_scaled = far_field_scaler.fit_transform(y_f_original)
+
+    # 划分数据集并移到设备
+    print("=============================划分数据集并移到设备=============================")
+    # S参数数据划分
+    X_s_train, X_s_val, y_s_train, y_s_val = train_test_split(
+        X_scaled_original, y_s_scaled, test_size=0.2, random_state=42)
+
+    # 远区场数据划分
+    X_f_train, X_f_val, y_f_train, y_f_val = train_test_split(
+        X_scaled_original, y_f_scaled, test_size=0.2, random_state=42)
+
+    # 转换为张量并移至设备
+    X_s_train = to_tensor_and_device(X_s_train, device)
+    y_s_train = to_tensor_and_device(y_s_train, device)
+    X_s_val = to_tensor_and_device(X_s_val, device)
+    y_s_val = to_tensor_and_device(y_s_val, device)
+
+    X_f_train = to_tensor_and_device(X_f_train, device)
+    y_f_train = to_tensor_and_device(y_f_train, device)
+    X_f_val = to_tensor_and_device(X_f_val, device)
+    y_f_val = to_tensor_and_device(y_f_val, device)
+
+    # 2. 模型训练阶段
+    print("=============================训练多输出模型=============================")
+    print(f"\n2. 多输出GAN模型训练...")
+
+    # 获取实际的远区场维度
+    actual_far_field_dim = y_f_original.shape[1] if len(y_f_original.shape) > 1 else y_f_original.shape[0]
+    print(f"实际使用的远区场输出维度: {actual_far_field_dim}")
+
+    # 训练多输出GAN模型
+    history = system.train_multi_output_gan(
+        X_s_train, y_s_train, X_f_train, y_f_train,
+        epochs=3000, batch_size=128,
+        far_field_dim=actual_far_field_dim
+    )
+
+    # 3. 保存训练好的模型和相关信息
+    print(f"\n3. 保存训练模型到 {model_save_path}...")
+
+    # 创建保存目录
+    save_dir = os.path.dirname(model_save_path)
+    if save_dir and not os.path.exists(save_dir):
+        try:
+            os.makedirs(save_dir)
+            print(f"📁 创建保存目录: {save_dir}")
+        except Exception as e:
+            print(f"❌ 创建目录失败: {e}")
+            # 如果创建目录失败，尝试使用当前目录
+            model_save_path = os.path.basename(model_save_path)
+            print(f"⚠️  使用当前目录保存模型: {model_save_path}")
+
+    # 保存训练信息
+    training_info = {
+        'multi_output_history': history,
+        'actual_far_field_dim': actual_far_field_dim,
+        'scalers': {
+            'input_scaler': {
+                'scale_': system.scaler.scale_,
+                'mean_': system.scaler.mean_,
+                'var_': system.scaler.var_,
+                'n_features_in_': getattr(system.scaler, 'n_features_in_',
+                                          system.scaler.scale_.shape[0] if hasattr(system.scaler, 'scale_') else 0),
+                'n_samples_seen_': getattr(system.scaler, 'n_samples_seen_', 1)
+            },
+            's_params_scaler': {
+                'scale_': system.target_scaler.scale_,
+                'min_': system.target_scaler.min_,
+                'data_min_': system.target_scaler.data_min_,
+                'data_max_': system.target_scaler.data_max_,
+                'data_range_': system.target_scaler.data_range_,
+                'n_features_in_': getattr(system.target_scaler, 'n_features_in_',
+                                          system.target_scaler.scale_.shape[0] if hasattr(system.target_scaler,
+                                                                                          'scale_') else 0),
+                'n_samples_seen_': getattr(system.target_scaler, 'n_samples_seen_', 1)
+            },
+            'far_field_scaler': {
+                'scale_': far_field_scaler.scale_,
+                'min_': far_field_scaler.min_,
+                'data_min_': far_field_scaler.data_min_,
+                'data_max_': far_field_scaler.data_max_,
+                'data_range_': far_field_scaler.data_range_,
+                'n_features_in_': getattr(far_field_scaler, 'n_features_in_',
+                                         far_field_scaler.scale_.shape[0] if hasattr(far_field_scaler,
+                                                                                     'scale_') else 0),
+                'n_samples_seen_': getattr(far_field_scaler, 'n_samples_seen_', 1)
+            },
+        },
+        'X_s_train_shape': X_s_train.shape,
+        'y_s_train_shape': y_s_train.shape,
+        'X_f_train_shape': X_f_train.shape,
+        'y_f_train_shape': y_f_train.shape,
+        'device': str(device),
+        'timestamp': time.strftime("%Y-%m-%d %H:%M:%S"),
+        'data_samples': X_original.shape[0]
+    }
+
+    # 保存训练信息
+    info_file_path = model_save_path.replace('.pth', '_info.npy')
+    try:
+        np.save(info_file_path, training_info)
+        print(f"✅ 训练信息保存成功: {info_file_path}")
+    except Exception as e:
+        print(f"❌ 训练信息保存失败: {e}")
+        return None
+
+    # 保存到文件
+    np.save(model_save_path.replace('.pth', '_info.npy'), training_info)
+    print("✅ 多输出模型训练和保存完成！")
+    # 保存模型权重
+    try:
+        if hasattr(system, 'multi_generator') and system.multi_generator is not None:
+            torch.save(system.multi_generator.state_dict(), model_save_path)
+            print(f"✅ 模型权重保存成功: {model_save_path}")
+        else:
+            print("❌ 模型未正确初始化，无法保存")
+            return None
+    except Exception as e:
+        print(f"❌ 模型权重保存失败: {e}")
+        return None
+
+    print("✅ 多输出模型训练和保存完成！")
+    return training_info
+
+
+
 if __name__ == "__main__":
     print("贴片天线GAN模型训练系统")
     print("=" * 70)
 
     # 训练模型
     create_antenna_data = 0  # 根据需要调整数据量
-    model_save_path = 'models/trained_gan_model.pth'
 
-    train_gan_model(create_antenna_data, model_save_path)
-    train_gan_model(create_antenna_data, model_save_path, 'far_field')
+    # model_save_path = 'models/trained_gan_model.pth'
+    # train_gan_model(create_antenna_data, model_save_path)
+    # train_gan_model(create_antenna_data, model_save_path, 'far_field')
 
+    # 训练多输出模型
+    # multi_model_save_path = 'models/multi_output_trained_model.pth'
+    # train_multi_output_model(create_antenna_data, multi_model_save_path)
+
+    try:
+        # 训练多输出模型
+        multi_model_save_path = 'models/multi_output_trained_model.pth'
+        result = train_multi_output_model(create_antenna_data, multi_model_save_path)
+
+        if result is not None:
+            print("\n" + "=" * 70)
+            print("✅ 模型训练和保存成功！")
+
+            # 验证模型文件是否存在
+            if os.path.exists(multi_model_save_path):
+                model_size = os.path.getsize(multi_model_save_path)
+                print(f"💾 模型文件大小: {model_size / (1024 * 1024):.2f} MB")
+            else:
+                print("❌ 模型文件未找到")
+
+            info_file = multi_model_save_path.replace('.pth', '_info.npy')
+            if os.path.exists(info_file):
+                info_size = os.path.getsize(info_file)
+                print(f"📋 训练信息文件大小: {info_size / 1024:.2f} KB")
+            else:
+                print("❌ 训练信息文件未找到")
+        else:
+            print("\n" + "=" * 70)
+            print("❌ 模型训练或保存失败！")
+
+    except Exception as e:
+        print(f"\n💥 训练过程中出现异常: {e}")
+        import traceback
+
+        traceback.print_exc()
     print("\n" + "=" * 70)
     print("模型训练完成！")
     print("=" * 70)

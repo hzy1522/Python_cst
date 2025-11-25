@@ -25,6 +25,77 @@ plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
 
 
+class MultiOutputGenerator(nn.Module):
+    """多输出生成器：输入尺寸参数，输出S参数和远区场"""
+
+    def __init__(self, input_dim, s_params_dim, far_field_dim):
+        super(MultiOutputGenerator, self).__init__()
+        self.input_dim = input_dim
+        self.s_params_dim = s_params_dim
+        self.far_field_dim = far_field_dim
+
+        # 共享的特征提取层
+        self.shared_layers = nn.Sequential(
+            nn.Linear(input_dim, 128),
+            nn.ReLU(),
+            nn.Linear(128, 256),
+            nn.ReLU(),
+            nn.Linear(256, 512),
+            nn.ReLU(),
+        )
+
+        # S参数输出分支
+        self.s_params_branch = nn.Sequential(
+            nn.Linear(512, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 512),
+            nn.ReLU(),
+            nn.Linear(512, s_params_dim),
+        )
+
+        # 远区场输出分支
+        self.far_field_branch = nn.Sequential(
+            nn.Linear(512, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 2048),
+            nn.ReLU(),
+            nn.Linear(2048, far_field_dim),
+        )
+
+    def forward(self, x):
+        shared_features = self.shared_layers(x)
+        s_params = self.s_params_branch(shared_features)
+        far_field = self.far_field_branch(shared_features)
+        return s_params, far_field
+
+
+class MultiOutputDiscriminator(nn.Module):
+    """多输出判别器：判断输入输出对是否合理"""
+
+    def __init__(self, input_dim, s_params_dim, far_field_dim):
+        super(MultiOutputDiscriminator, self).__init__()
+
+        # 判别器网络
+        self.discriminator = nn.Sequential(
+            nn.Linear(s_params_dim + far_field_dim + input_dim, 1024),
+            nn.LeakyReLU(0.2),
+            nn.Dropout(0.3),
+            nn.Linear(1024, 512),
+            nn.LeakyReLU(0.2),
+            nn.Dropout(0.3),
+            nn.Linear(512, 256),
+            nn.LeakyReLU(0.2),
+            nn.Dropout(0.3),
+            nn.Linear(256, 1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, s_params, far_field, inputs):
+        # 将输入、S参数和远区场数据连接在一起
+        combined = torch.cat([s_params, far_field, inputs], dim=1)
+        return self.discriminator(combined)
+
+
 # 在 patch_antenna_design.py 中添加注意力模块
 class AttentionModule(nn.Module):
     def __init__(self, input_dim, attention_dim=64):
@@ -73,6 +144,235 @@ class PatchAntennaDesignSystem:
         self.forward_gan_optimizers = None
         self.forward_discriminator = None
         self.forward_generator = None
+
+    def create_multi_output_gan_models(self, input_dim=2, s_params_dim=201, far_field_output_dim=None):
+        """
+        创建多输出GAN模型
+
+        Args:
+            input_dim: 输入维度(贴片长宽)
+            s_params_dim: S参数输出维度
+            far_field_output_dim: 远区场输出维度
+        """
+        if far_field_output_dim is None:
+            # 默认维度，但最好从训练数据中获取
+            far_field_output_dim = 181 * 361  # 标准远区场维度
+
+        # 创建多输出生成器，使用正确的远区场维度
+        self.multi_generator = MultiOutputGenerator(
+            input_dim=input_dim,
+            s_params_dim=s_params_dim,
+            far_field_dim=far_field_output_dim
+        ).to(self.device)
+
+        # 创建多输出判别器
+        self.multi_discriminator = MultiOutputDiscriminator(
+            input_dim=input_dim,
+            s_params_dim=s_params_dim,
+            far_field_dim=far_field_output_dim
+        ).to(self.device)
+
+    def train_multi_output_gan(self, X_s, y_s, X_f, y_f, epochs=1000, batch_size=32, far_field_dim=None):
+        """
+        训练多输出GAN模型
+
+        Args:
+            X_s: S参数输入数据
+            y_s: S参数输出数据
+            X_f: 远区场输入数据
+            y_f: 远区场输出数据
+            epochs: 训练轮数
+            batch_size: 批次大小
+            far_field_dim: 远区场输出维度
+        """
+        # 根据实际维度创建模型
+        if far_field_dim is None:
+            far_field_dim = y_f.shape[1] if len(y_f.shape) > 1 else y_f.shape[0]
+
+        # 重新创建模型以匹配实际维度
+        self.create_multi_output_gan_models(far_field_output_dim=far_field_dim)
+
+        # 定义优化器
+        generator_optimizer = torch.optim.Adam(self.multi_generator.parameters(), lr=0.0002, betas=(0.5, 0.999))
+        discriminator_optimizer = torch.optim.Adam(self.multi_discriminator.parameters(), lr=0.0002, betas=(0.5, 0.999))
+
+        # 损失函数
+        criterion_mse = torch.nn.MSELoss()
+        criterion_bce = torch.nn.BCELoss()
+
+        # 创建数据加载器
+        dataset = TensorDataset(X_s, y_s, X_f, y_f)
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+        # 训练循环
+        history = {
+            'generator_loss': [],
+            'discriminator_loss': [],
+            's_params_loss': [],
+            'far_field_loss': []
+        }
+
+        for epoch in range(epochs):
+            for batch_idx, (batch_X_s, batch_y_s, batch_X_f, batch_y_f) in enumerate(dataloader):
+                # 获取当前批次的实际大小
+                current_batch_size = batch_X_s.size(0)
+
+                # 创建与当前批次大小匹配的标签
+                real_labels = torch.ones(current_batch_size, 1).to(self.device)
+                fake_labels = torch.zeros(current_batch_size, 1).to(self.device)
+
+                # 使用当前批次数据
+                real_s_params = batch_y_s.to(self.device)
+                real_far_field = batch_y_f.to(self.device)
+                real_inputs = batch_X_s.to(self.device)
+
+                # 训练判别器
+                self.multi_discriminator.zero_grad()
+
+                # 判别真实数据
+                real_output = self.multi_discriminator(real_s_params, real_far_field, real_inputs)
+                real_loss = criterion_bce(real_output, real_labels)
+
+                # 生成假数据
+                fake_s_params, fake_far_field = self.multi_generator(real_inputs)
+                fake_output = self.multi_discriminator(fake_s_params.detach(), fake_far_field.detach(), real_inputs)
+                fake_loss = criterion_bce(fake_output, fake_labels)
+
+                # 判别器总损失
+                d_loss = real_loss + fake_loss
+                d_loss.backward()
+                discriminator_optimizer.step()
+
+                # 训练生成器
+                self.multi_generator.zero_grad()
+
+                # 生成器试图欺骗判别器
+                fake_output = self.multi_discriminator(fake_s_params, fake_far_field, real_inputs)
+                g_loss = criterion_bce(fake_output, real_labels)
+
+                # 添加内容损失
+                s_params_loss = criterion_mse(fake_s_params, real_s_params)
+                far_field_loss = criterion_mse(fake_far_field, real_far_field)
+
+                # 生成器总损失
+                total_g_loss = g_loss + s_params_loss + far_field_loss
+                total_g_loss.backward()
+                generator_optimizer.step()
+
+            # 记录损失
+            if epoch % 100 == 0:
+                history['generator_loss'].append(total_g_loss.item())
+                history['discriminator_loss'].append(d_loss.item())
+                history['s_params_loss'].append(s_params_loss.item())
+                history['far_field_loss'].append(far_field_loss.item())
+
+                print(f"Epoch [{epoch}/{epochs}], "
+                      f"D Loss: {d_loss.item():.4f}, "
+                      f"G Loss: {total_g_loss.item():.4f}, "
+                      f"S Params Loss: {s_params_loss.item():.4f}, "
+                      f"Far Field Loss: {far_field_loss.item():.4f}")
+
+        # 在训练循环结束后，确保模型已正确训练
+        print("✅ 多输出GAN模型训练完成")
+
+        # 可以在这里添加模型验证
+        if hasattr(self, 'multi_generator') and self.multi_generator is not None:
+            print(f"📊 模型参数数量: {sum(p.numel() for p in self.multi_generator.parameters() if p.requires_grad)}")
+
+        return history
+
+    def predict_s_params_and_far_field(self, patch_length, patch_width, far_field_dim=None):
+        """
+        使用多输出GAN模型同时预测S参数和远区场方向图
+        """
+        print(f"🔍 开始多输出预测，输入: 长度={patch_length}mm, 宽度={patch_width}mm")
+
+        # 加载训练信息以获取正确的输出维度
+        info_path = 'models/multi_output_trained_model_info.npy'
+
+        if far_field_dim is None:
+            if os.path.exists(info_path):
+                training_info = np.load(info_path, allow_pickle=True).item()
+                far_field_dim = training_info.get('actual_far_field_dim', 2701)
+                print(f"📦 从训练信息获取远区场维度: {far_field_dim}")
+            else:
+                far_field_dim = 2701  # 默认维度
+                print(f"⚠️  使用默认远区场维度: {far_field_dim}")
+
+        # 确保模型已创建且维度正确
+        if not hasattr(self, 'multi_generator') or self.multi_generator is None:
+            print(f"🔧 创建多输出GAN模型，远区场维度: {far_field_dim}")
+            self.create_multi_output_gan_models(far_field_output_dim=far_field_dim)
+        else:
+            print(f"✅ 多输出GAN模型已存在")
+
+        # 加载模型权重
+        model_path = 'models/multi_output_trained_model.pth'
+        if os.path.exists(model_path):
+            try:
+                print(f"📥 加载模型权重: {model_path}")
+                state_dict = torch.load(model_path, map_location=self.device)
+                self.multi_generator.load_state_dict(state_dict)
+                print(f"✅ 模型权重加载成功")
+            except Exception as e:
+                print(f"❌ 模型权重加载失败: {e}")
+                return None, None
+        else:
+            print(f"❌ 模型文件不存在: {model_path}")
+            return None, None
+
+        # 设置为评估模式
+        self.multi_generator.eval()
+        print(f"🔄 设置模型为评估模式")
+
+        # 准备输入数据
+        input_data = np.array([[patch_length, patch_width]], dtype=np.float32)
+        print(f"📄 输入数据: {input_data}")
+
+        # 标准化输入数据
+        if hasattr(self, 'scaler') and hasattr(self.scaler, 'scale_'):
+            input_normalized = self.scaler.transform(input_data)
+            print(f"📏 输入数据标准化完成")
+        else:
+            input_normalized = input_data
+            print(f"⚠️  输入数据未标准化")
+
+        # 转换为tensor
+        input_tensor = torch.tensor(input_normalized, dtype=torch.float32).to(self.device)
+        print(f"🔄 输入张量已创建: {input_tensor.shape}")
+
+        # 进行预测
+        with torch.no_grad():
+            s_params_output, far_field_output = self.multi_generator(input_tensor)
+            print(f"🎯 预测完成:")
+            print(f"   S参数输出维度: {s_params_output.shape}")
+            print(f"   远区场输出维度: {far_field_output.shape}")
+
+            # 反标准化输出
+            s_params_pred = None
+            far_field_pred = None
+
+            if hasattr(self, 'target_scaler') and hasattr(self.target_scaler, 'scale_'):
+                s_params_pred = self.target_scaler.inverse_transform(
+                    s_params_output.cpu().numpy()
+                )[0]  # 取第一个样本
+                print(f"📐 S参数反标准化完成")
+            else:
+                s_params_pred = s_params_output.cpu().numpy()[0]
+                print(f"⚠️  S参数未反标准化")
+
+            if hasattr(self, 'far_field_scaler') and hasattr(self.far_field_scaler, 'scale_'):
+                far_field_pred = self.far_field_scaler.inverse_transform(
+                    far_field_output.cpu().numpy()
+                )[0]  # 取第一个样本
+                print(f"📐 远区场反标准化完成")
+            else:
+                far_field_pred = far_field_output.cpu().numpy()[0]
+                print(f"⚠️  远区场未反标准化")
+
+        print(f"✅ 预测完成，返回结果")
+        return s_params_pred, far_field_pred
+
 
     def plot_s11_comparison_advanced(self, patch_length, patch_width, csv_file_path,
                                      frequency_column=None,

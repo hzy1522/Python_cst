@@ -196,7 +196,7 @@ def gan_demo(create_antenna_data):
                                        "lumpedport_D": 2.3 / 2,
                                        }
         train_model = False
-        success, freq_at_s11_min, far_field_gain, s11_min, output_file= calculate_from_hfss_py(antenna_params_test_by_hfss, train_model)
+        success, freq_at_s11_min, far_field_gain, s11_min, output_file, output_file_farfield= calculate_from_hfss_py(antenna_params_test_by_hfss, train_model)
 
         system.plot_s11_comparison_advanced(float(best_design[0]), float(best_design[1]),
                                      output_file, frequency_column=0, s11_column=1)

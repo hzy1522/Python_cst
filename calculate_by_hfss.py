@@ -216,7 +216,7 @@ class AntennaDataGenerator:
 
 #==========================================调用hfss计算性能==========================================
             train_model = True
-            success, freq_at_s11_min, far_field_gain, s11_min, output_file_exp = calculate_from_hfss_py(antenna_params, train_model)
+            success, freq_at_s11_min, far_field_gain, s11_min, output_file_exp, output_file_exp_farfield = calculate_from_hfss_py(antenna_params, train_model)
 #==========================================调用hfss计算性能==========================================
             y[i] = [s11_min, freq_at_s11_min, far_field_gain]
 
