@@ -400,6 +400,7 @@ def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan
                     output_file, frequency_column=0, s11_column=1,
                     predict_s11_curve=s11_curve_predict
                 )
+
             else:
                 print(f"  HFSS计算失败")
                 hfss_results.append({
@@ -435,6 +436,13 @@ def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan
         hfss_csv_path = 'results/hfss_validation_results.csv'
         hfss_df.to_csv(hfss_csv_path, index=False)
         print(f"\nHFSS验证结果已保存到 {hfss_csv_path}")
+        return (s11_min_predict,
+                freq_at_s11_min_predict,
+                s11_curve_predict,
+                s11_min,
+                freq_at_s11_min,
+                far_field_gain)
+
 
 def load_target_specs_from_csv(csv_file_path):
     """
@@ -490,10 +498,16 @@ if __name__ == "__main__":
 
     target_specs = load_target_specs_from_csv('TEST_RESULT/data_dict_pandas_20251121_111221.csv')
     use_trained_gan_model(model_info_path, target_specs)
-    #
-    use_trained_gan_model_prediction_results()
-    # use_trained_gan_model_prediction_results(patch_lengths='40', patch_widths='40')
 
+    s11_min_predict, freq_at_s11_min_predict, s11_curve_predict, s11_min, freq_at_s11_min, far_field_gain = use_trained_gan_model_prediction_results()
+    # s11_min_predict, freq_at_s11_min_predict, s11_curve_predict, s11_min, freq_at_s11_min, far_field_gain = use_trained_gan_model_prediction_results(patch_lengths='40', patch_widths='40')
+
+    print("\n" + "=" * 70)
+    print(f"  实际性能: S11={s11_min:.2f}dB, 频率={freq_at_s11_min:.2f}GHz, 增益={far_field_gain:.2f}dBi")
+    print(f"  模型预测性能: S11={s11_min_predict:.2f}dB, "
+          f"频率={freq_at_s11_min_predict:.2f}GHz, "
+          # f"增益={far_field_gain_predict:.2f}dBi"
+          )
     print("\n" + "=" * 70)
     print("模型使用完成！")
     print("=" * 70)
