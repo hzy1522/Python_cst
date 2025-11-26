@@ -144,6 +144,116 @@ class PatchAntennaDesignSystem:
         self.forward_gan_optimizers = None
         self.forward_discriminator = None
         self.forward_generator = None
+    def train_inverse_model(self, X_train, y_train, X_val, y_val,
+                       epochs=1000, batch_size=128):
+        """
+        训练逆向模型，根据性能参数预测天线尺寸
+
+        Args:
+            X_train: 训练输入数据 (S参数+远区场)
+            y_train: 训练输出数据 (天线尺寸)
+            X_val: 验证输入数据
+            y_val: 验证输出数据
+            epochs: 训练轮数
+            batch_size: 批次大小
+
+        Returns:
+            dict: 训练历史记录
+        """
+        from torch.utils.data import DataLoader, TensorDataset
+        import torch.nn as nn
+
+        # 初始化逆向模型
+        input_dim = X_train.shape[1]
+        output_dim = y_train.shape[1]
+
+        self.inverse_model = nn.Sequential(
+            nn.Linear(input_dim, 512),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Linear(64, output_dim)
+        ).to(X_train.device)
+
+        # 定义优化器和损失函数
+        optimizer = torch.optim.Adam(self.inverse_model.parameters(), lr=0.001)
+        criterion = nn.MSELoss()
+
+        # 创建数据加载器
+        dataset = TensorDataset(X_train, y_train)
+        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+        # 训练历史记录
+        history = {'loss': [], 'val_loss': []}
+
+        # 开始训练
+        for epoch in range(epochs):
+            # 训练阶段
+            self.inverse_model.train()
+            total_loss = 0
+
+            for batch_x, batch_y in dataloader:
+                optimizer.zero_grad()
+                predictions = self.inverse_model(batch_x)
+                loss = criterion(predictions, batch_y)
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item()
+
+            avg_loss = total_loss / len(dataloader)
+
+            # 验证阶段
+            self.inverse_model.eval()
+            with torch.no_grad():
+                val_predictions = self.inverse_model(X_val)
+                val_loss = criterion(val_predictions, y_val).item()
+
+            # 记录损失
+            history['loss'].append(avg_loss)
+            history['val_loss'].append(val_loss)
+
+            # 打印进度
+            if epoch % 100 == 0 or epoch == epochs - 1:
+                print(f"Epoch [{epoch+1}/{epochs}], Loss: {avg_loss:.6f}, Val Loss: {val_loss:.6f}")
+
+        return history
+    def predict_dimensions_from_performance(self, s_parameters, far_field_pattern):
+        """
+        使用逆向模型根据性能参数预测天线尺寸
+
+        Args:
+            s_parameters: S参数曲线（201维）
+            far_field_pattern: 远区场方向图（展平后的一维数组）
+
+        Returns:
+            tuple: (预测长度, 预测宽度)
+        """
+        if self.inverse_model is None:
+            raise ValueError("逆向模型未初始化")
+
+        # 合并输入特征
+        input_features = np.concatenate([s_parameters, far_field_pattern])
+
+        # 标准化输入
+        input_scaled = self.inverse_input_scaler.transform(input_features.reshape(1, -1))
+        input_tensor = torch.tensor(input_scaled, dtype=torch.float32).to(self.device)
+
+        # 模型预测
+        self.inverse_model.eval()
+        with torch.no_grad():
+            predicted_scaled = self.inverse_model(input_tensor)
+            predicted_scaled = predicted_scaled.cpu().numpy()
+
+        # 反标准化得到实际尺寸
+        predicted_dimensions = self.inverse_output_scaler.inverse_transform(predicted_scaled)[0]
+
+        return predicted_dimensions[0], predicted_dimensions[1]
 
     def create_multi_output_gan_models(self, input_dim=2, s_params_dim=201, far_field_output_dim=None):
         """

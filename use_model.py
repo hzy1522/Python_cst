@@ -447,6 +447,105 @@ def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan
                 freq_at_s11_min,
                 far_field_gain)
 
+def extract_gain_matrix_from_csv(csv_file_path, gain_column_name='Gain_dB_matrix'):
+    """
+    从CSV文件中提取增益矩阵数据并展平为一维数组
+    适用于增益数据存储在单个单元格中的情况
+
+    Args:
+        csv_file_path: CSV文件路径
+        gain_column_name: 增益数据列名，默认为'Gain_dB_matrix'
+
+    Returns:
+        flattened_gain_data: 展平后的增益数据一维数组
+    """
+    try:
+        # 读取CSV文件
+        df = pd.read_csv(csv_file_path)
+
+        # 检查指定列是否存在
+        if gain_column_name not in df.columns:
+            raise ValueError(f"列 '{gain_column_name}' 不存在于CSV文件中")
+
+        # 获取第一个单元格的数据（假设所有行的增益矩阵相同或只需要第一行）
+        gain_data_str = df[gain_column_name].iloc[0]
+
+        # 解析存储在单个单元格中的二维矩阵数据
+        # 根据实际数据格式选择合适的解析方法
+
+        # 方法1: 如果数据是Python列表格式的字符串
+        if gain_data_str.startswith('[') and gain_data_str.endswith(']'):
+            # 移除最外层括号
+            inner_data = gain_data_str[1:-1]
+
+            # 处理多维数组格式
+            if '],' in inner_data:  # 二维数组
+                # 分割行
+                rows = inner_data.split('],')
+                matrix_data = []
+                for i, row in enumerate(rows):
+                    # 处理最后一行可能缺少括号的情况
+                    if i == len(rows) - 1 and not row.endswith(']'):
+                        row += ']'
+                    elif i < len(rows) - 1 and not row.endswith(']'):
+                        row += ']'
+
+                    # 提取数字
+                    numbers_str = row.strip('[] ')
+                    if numbers_str:
+                        numbers = [float(x.strip()) for x in numbers_str.split(',') if x.strip()]
+                        matrix_data.append(numbers)
+
+                # 转换为numpy数组并展平
+                gain_matrix = np.array(matrix_data)
+                flattened_gain_data = gain_matrix.flatten()
+            else:
+                # 一维数组
+                numbers = [float(x.strip()) for x in inner_data.split(',') if x.strip()]
+                flattened_gain_data = np.array(numbers)
+
+        # 方法2: 如果数据是其他格式（如JSON），可以添加相应的解析逻辑
+        else:
+            # 尝试直接转换为浮点数数组（适用于简单格式）
+            flattened_gain_data = np.array([float(x) for x in gain_data_str.split(',') if x.strip()])
+
+        print(f"✅ 成功提取增益矩阵数据，展平后维度: {flattened_gain_data.shape}")
+        return flattened_gain_data
+
+    except Exception as e:
+        print(f"❌ 提取增益矩阵数据时出错: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+def parse_gain_matrix_string(matrix_string):
+    """
+    解析增益矩阵字符串为numpy数组
+
+    Args:
+        matrix_string: 包含矩阵数据的字符串
+
+    Returns:
+        numpy数组形式的矩阵数据
+    """
+    try:
+        # 清理字符串
+        matrix_string = matrix_string.strip()
+
+        # 如果是嵌套列表格式
+        if matrix_string.startswith('[') and matrix_string.endswith(']'):
+            # 尝试使用eval（注意：仅在可信数据上使用）
+            # 或者使用更安全的解析方法
+            matrix_data = eval(matrix_string)
+            return np.array(matrix_data)
+        else:
+            # 尝试按逗号分割并转换为数组
+            data_list = [float(x) for x in matrix_string.split(',') if x.strip()]
+            return np.array(data_list)
+
+    except Exception as e:
+        print(f"解析矩阵字符串时出错: {e}")
+        return None
 
 def load_target_specs_from_csv(csv_file_path):
     """
@@ -776,6 +875,254 @@ def use_multi_output_model(model_path, patch_length, patch_width):
             'predicted_far_field_pattern': None,
             'error': str(e)
         }
+
+def use_inverse_model(model_path, s_parameters=None, far_field_pattern=None):
+    """
+    使用训练好的逆向模型进行预测（根据性能参数预测天线尺寸）
+
+    Args:
+        model_path: 模型保存路径
+        s_parameters: S参数曲线数据（201维）
+        far_field_pattern: 远区场方向图数据（展平后的一维数组）
+
+    Returns:
+        dict: 包含预测结果的字典
+    """
+    # 构造完整模型和信息文件路径
+    model_weights_path = model_path
+    info_path = model_path.replace('.pth', '_info.npy')
+
+    # 检查文件是否存在
+    if not os.path.exists(model_weights_path):
+        print(f"⚠️  模型权重文件不存在: {model_weights_path}")
+        return {
+            'input_performance': {'s_parameters': s_parameters, 'far_field_pattern': far_field_pattern},
+            'predicted_dimensions': None,
+            'error': '模型权重文件不存在'
+        }
+
+    if not os.path.exists(info_path):
+        print(f"⚠️  模型信息文件不存在: {info_path}")
+        return {
+            'input_performance': {'s_parameters': s_parameters, 'far_field_pattern': far_field_pattern},
+            'predicted_dimensions': None,
+            'error': '模型信息文件不存在'
+        }
+
+    # 加载训练信息
+    training_info = np.load(info_path, allow_pickle=True).item()
+
+    # 初始化系统
+    system = PatchAntennaDesignSystem()
+    device = get_device()
+    system.device = device
+
+    # 恢复标准化器状态
+    if 'scalers' in training_info:
+        from sklearn.preprocessing import MinMaxScaler, StandardScaler
+
+        # 重建 input_scaler (用于输入特征：S参数+远区场)
+        system.inverse_input_scaler = MinMaxScaler()
+        input_scaler_data = training_info['scalers']['input_scaler']
+        system.inverse_input_scaler.scale_ = input_scaler_data['scale_']
+        system.inverse_input_scaler.min_ = input_scaler_data['min_']
+        system.inverse_input_scaler.data_min_ = input_scaler_data['data_min_']
+        system.inverse_input_scaler.data_max_ = input_scaler_data['data_max_']
+        system.inverse_input_scaler.data_range_ = input_scaler_data['data_range_']
+        system.inverse_input_scaler.n_features_in_ = input_scaler_data.get('n_features_in_',
+                                             len(input_scaler_data['scale_']) if 'scale_' in input_scaler_data else 0)
+        system.inverse_input_scaler.n_samples_seen_ = input_scaler_data.get('n_samples_seen_', 1)
+
+        # 重建 output_scaler (用于输出目标：天线尺寸)
+        system.inverse_output_scaler = MinMaxScaler()
+        output_scaler_data = training_info['scalers']['output_scaler']
+        system.inverse_output_scaler.scale_ = output_scaler_data['scale_']
+        system.inverse_output_scaler.min_ = output_scaler_data['min_']
+        system.inverse_output_scaler.data_min_ = output_scaler_data['data_min_']
+        system.inverse_output_scaler.data_max_ = output_scaler_data['data_max_']
+        system.inverse_output_scaler.data_range_ = output_scaler_data['data_range_']
+        system.inverse_output_scaler.n_features_in_ = output_scaler_data.get('n_features_in_',
+                                              len(output_scaler_data['scale_']) if 'scale_' in output_scaler_data else 0)
+        system.inverse_output_scaler.n_samples_seen_ = output_scaler_data.get('n_samples_seen_', 1)
+
+    # 初始化逆向模型结构
+    try:
+        # 从训练信息中获取输入维度
+        input_dim = training_info.get('X_train_shape', [0, 2911])[1]  # 默认201(S参数)+2710(远区场)
+        output_dim = training_info.get('y_train_shape', [0, 2])[1]    # 默认2(长度+宽度)
+
+        print(f"🔍 模型结构: 输入维度={input_dim}, 输出维度={output_dim}")
+
+        # 创建逆向模型
+        import torch.nn as nn
+        system.inverse_model = nn.Sequential(
+            nn.Linear(input_dim, 512),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Linear(64, output_dim)
+        ).to(device)
+
+        # 加载模型权重
+        state_dict = torch.load(model_weights_path, map_location=device)
+        system.inverse_model.load_state_dict(state_dict)
+        system.inverse_model.eval()
+
+        print(f"✅ 成功加载逆向模型: {model_weights_path}")
+
+    except Exception as e:
+        print(f"❌ 模型加载失败: {e}")
+        return {
+            'input_performance': {'s_parameters': s_parameters, 'far_field_pattern': far_field_pattern},
+            'predicted_dimensions': None,
+            'error': f'模型加载失败: {str(e)}'
+        }
+
+    # 数据预处理和预测
+    try:
+        print(f"🔍 开始逆向预测...")
+
+        # 检查输入数据
+        if s_parameters is None or far_field_pattern is None:
+            print("⚠️  输入数据为空，使用默认示例数据")
+            # 生成示例数据用于演示
+            s_parameters = np.random.uniform(-40, 0, 201)  # 201个S参数点
+            far_field_pattern = np.random.uniform(0, 10, 37*73)  # 示例远区场数据
+
+        # 确保数据维度正确
+        if len(s_parameters) != 201:
+            print(f"⚠️  S参数维度不匹配: 期望201，实际{len(s_parameters)}")
+            # 尝试调整维度
+            if len(s_parameters) > 201:
+                s_parameters = s_parameters[:201]
+            else:
+                # 用最后一个值填充
+                padding = np.full(201 - len(s_parameters), s_parameters[-1])
+                s_parameters = np.concatenate([s_parameters, padding])
+
+        # 合并输入特征
+        input_features = np.concatenate([s_parameters, far_field_pattern])
+        print(f"📊 输入特征维度: {input_features.shape}")
+
+        # 标准化输入数据
+        input_scaled = system.inverse_input_scaler.transform(input_features.reshape(1, -1))
+        input_tensor = torch.tensor(input_scaled, dtype=torch.float32).to(device)
+
+        # 模型预测
+        with torch.no_grad():
+            predicted_scaled = system.inverse_model(input_tensor)
+            predicted_scaled = predicted_scaled.cpu().numpy()
+
+        # 反标准化得到实际尺寸
+        predicted_dimensions = system.inverse_output_scaler.inverse_transform(predicted_scaled)[0]
+        patch_length, patch_width = predicted_dimensions
+
+        print(f"📊 预测结果:")
+        print(f"   预测长度: {patch_length:.2f} mm")
+        print(f"   预测宽度: {patch_width:.2f} mm")
+
+        # 保存预测结果
+        result = {
+            'input_performance': {
+                's_parameters': s_parameters,
+                'far_field_pattern': far_field_pattern
+            },
+            'predicted_dimensions': {
+                'length': patch_length,
+                'width': patch_width
+            }
+        }
+
+        # 创建结果目录
+        if not os.path.exists('results'):
+            os.makedirs('results')
+
+        # 保存结果到CSV
+        result_df = pd.DataFrame([{
+            'predicted_length': patch_length,
+            'predicted_width': patch_width,
+            's_params_length': len(s_parameters),
+            'far_field_length': len(far_field_pattern)
+        }])
+        result_csv_path = 'results/inverse_model_prediction.csv'
+        result_df.to_csv(result_csv_path, index=False)
+        print(f"💾 预测结果已保存到: {result_csv_path}")
+
+        print(f"✅ 逆向预测完成!")
+        return result
+
+    except Exception as e:
+        print(f"❌ 预测过程中出错: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            'input_performance': {'s_parameters': s_parameters, 'far_field_pattern': far_field_pattern},
+            'predicted_dimensions': None,
+            'error': str(e)
+        }
+
+
+def use_inverse_model_with_target_specs(model_path, target_s11_min=-30, target_frequency=2.45, target_gain=7.0):
+    """
+    使用逆向模型，根据目标性能指标生成天线尺寸
+
+    Args:
+        model_path: 模型路径
+        target_s11_min: 目标S11最小值 (dB)
+        target_frequency: 目标频率 (GHz)
+        target_gain: 目标增益 (dBi)
+
+    Returns:
+        dict: 预测结果
+    """
+    print(f"🔍 根据目标性能生成天线设计:")
+    print(f"   目标S11最小值: {target_s11_min} dB")
+    print(f"   目标频率: {target_frequency} GHz")
+    print(f"   目标增益: {target_gain} dBi")
+
+    # 生成符合目标的示例S参数曲线
+    # 创建一个简单的S参数模型：在目标频率处有最小值
+    frequencies = np.linspace(2.0, 3.0, 201)
+    s_parameters = np.full(201, -10)  # 基础值-10dB
+
+    # 在目标频率附近创建更深的凹陷
+    target_idx = int((target_frequency - 2.0) / (3.0 - 2.0) * 200)
+    for i in range(max(0, target_idx-10), min(201, target_idx+11)):
+        distance = abs(i - target_idx)
+        s_parameters[i] = target_s11_min + distance * 2  # 渐变效果
+
+    # 生成示例远区场数据
+    far_field_pattern = np.full(37*73, target_gain)
+
+    # 添加一些变化使数据更真实
+    far_field_pattern += np.random.normal(0, 0.5, len(far_field_pattern))
+
+    # 调用逆向模型进行预测
+    result = use_inverse_model(model_path, s_parameters, far_field_pattern)
+
+    if result['predicted_dimensions']:
+        length = result['predicted_dimensions']['length']
+        width = result['predicted_dimensions']['width']
+        print(f"🎯 推荐天线尺寸: {length:.2f} × {width:.2f} mm")
+
+        # 可选：使用正向模型验证预测结果
+        print(f"🔄 验证预测结果...")
+        try:
+            forward_result = use_multi_output_model('models/multi_output_trained_model.pth', length, width)
+            if forward_result['predicted_s_parameters'] is not None:
+                predicted_s11 = np.min(forward_result['predicted_s_parameters'])
+                print(f"   验证S11最小值: {predicted_s11:.2f} dB")
+        except Exception as e:
+            print(f"   验证失败: {e}")
+
+    return result
+
 
 def plot_predictions(s_params_pred, far_field_pred, patch_length, patch_width):
     """
@@ -1109,12 +1456,49 @@ if __name__ == "__main__":
     #       )
     # print("\n" + "=" * 70)
 
+    # 使用逆向模型
     print("\n" + "=" * 70)
-    model_info_path = 'models/multi_output_trained_model.npy'
-    # result = use_multi_output_model(model_info_path, 39, 48.4)
-    result = use_multi_output_model(model_info_path, 35, 50)
+    print("使用逆向模型（从性能参数预测尺寸）")
+    print("=" * 70)
+
+    # 方法1: 直接使用具体的性能数据
+    target_specs_s11 = load_target_specs_from_csv('RESULT/data_dict_pandas_20251125_101258.csv')
+    # print(f"目标性能数据:{target_specs_s11}")
+    target_specs_gain = extract_gain_matrix_from_csv('RESULT/data_dict_pandas_20251125_101258.csv')
+    # print(f"目标增益数据:{target_specs_gain}")
+    if target_specs_gain is not None:
+        inverse_result = use_inverse_model('models/inverse_trained_model.pth',
+                                           target_specs_s11[0] if target_specs_s11 else None,
+                                           target_specs_gain)
+
+    # # 方法2: 根据目标性能指标生成设计
+    # inverse_result = use_inverse_model_with_target_specs(
+    #     'models/inverse_trained_model.pth',
+    #     target_s11_min=-15,  # 目标S11最小值
+    #     target_frequency=2.45,  # 目标频率
+    #     target_gain=8.0  # 目标增益
+    # )
+
+    if inverse_result['predicted_dimensions']:
+        print(f"✅ 逆向设计完成!")
+        print(f"   推荐尺寸: {inverse_result['predicted_dimensions']['length']:.2f} × "
+              f"{inverse_result['predicted_dimensions']['width']:.2f} mm")
+        #使用模型预测结果
+        print("使用模型预测结果:")
+        model_info_path = 'models/multi_output_trained_model.npy'
+        result = use_multi_output_model(model_info_path,
+                                        float(inverse_result['predicted_dimensions']['length']),
+                                        float(inverse_result['predicted_dimensions']['width']))
+    else:
+        print(f"❌ 逆向设计失败: {inverse_result.get('error', '未知错误')}")
+
     print("\n" + "=" * 70)
 
+    print("\n" + "=" * 70)
+    # model_info_path = 'models/multi_output_trained_model.npy'
+    # result = use_multi_output_model(model_info_path, 39, 48.4)
+    # result = use_multi_output_model(model_info_path, 35, 50)
+    print("\n" + "=" * 70)
 
     print("\n" + "=" * 70)
     print("模型使用完成！")
