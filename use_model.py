@@ -568,6 +568,8 @@ def load_target_specs_from_csv(csv_file_path):
         s11_min = row['_最小值']  # S11最小值
         freq = row['Freq [GHz]']  # 对应频率
         gain = row['Gain_dB']   # 远区场增益
+        patch_length = row['patch_length']
+        patch_width = row['patch_width']
 
         # 提取201个S参数点
         # 方法1: 如果列名是频率值（如2.000, 2.010, ...）
@@ -589,7 +591,7 @@ def load_target_specs_from_csv(csv_file_path):
         target_spec = s_parameters
         target_specs.append(target_spec)
 
-    return target_specs
+    return target_specs, patch_length, patch_width
 
 def use_multi_output_model(model_path, patch_length, patch_width):
     """
@@ -1462,7 +1464,7 @@ if __name__ == "__main__":
     print("=" * 70)
 
     # 方法1: 直接使用具体的性能数据
-    target_specs_s11 = load_target_specs_from_csv('RESULT/data_dict_pandas_20251125_101258.csv')
+    target_specs_s11, patch_length, patch_width = load_target_specs_from_csv('RESULT/data_dict_pandas_20251125_101258.csv')
     # print(f"目标性能数据:{target_specs_s11}")
     target_specs_gain = extract_gain_matrix_from_csv('RESULT/data_dict_pandas_20251125_101258.csv')
     # print(f"目标增益数据:{target_specs_gain}")
@@ -1481,14 +1483,29 @@ if __name__ == "__main__":
 
     if inverse_result['predicted_dimensions']:
         print(f"✅ 逆向设计完成!")
-        print(f"   推荐尺寸: {inverse_result['predicted_dimensions']['length']:.2f} × "
+        print(f"       推荐尺寸: {inverse_result['predicted_dimensions']['length']:.2f} × "
               f"{inverse_result['predicted_dimensions']['width']:.2f} mm")
+        print(f"目标性能对应尺寸: {patch_length:.2f} × {patch_width:.2f} mm")
+
         #使用模型预测结果
         print("使用模型预测结果:")
         model_info_path = 'models/multi_output_trained_model.npy'
         result = use_multi_output_model(model_info_path,
                                         float(inverse_result['predicted_dimensions']['length']),
                                         float(inverse_result['predicted_dimensions']['width']))
+
+        print("\n" + "=" * 70)
+        actual_length = inverse_result['predicted_dimensions']['length']
+        actual_width = inverse_result['predicted_dimensions']['width']
+        length_error = abs(patch_length - actual_length)
+        width_error = abs(patch_width - actual_width)
+        length_error_percent = (length_error / actual_length) * 100
+        width_error_percent = (width_error / actual_width) * 100
+        print(f"📏 尺寸误差分析:")
+        print(f"   长度误差: {length_error:.2f} mm ({length_error_percent:.2f}%)")
+        print(f"   宽度误差: {width_error:.2f} mm ({width_error_percent:.2f}%)")
+        print(f"   总体误差: {length_error + width_error:.2f} mm")
+        print("\n" + "=" * 70)
     else:
         print(f"❌ 逆向设计失败: {inverse_result.get('error', '未知错误')}")
 
