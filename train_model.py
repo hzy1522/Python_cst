@@ -199,10 +199,10 @@ def train_inverse_model(create_antenna_data=0, model_save_path='inverse_model.pt
 
     # 合并包含S参数和远区场的数据
     print("=============================合并所有数据=============================")
-    input_pattern = "./RESULT/data_dict_pandas_*.csv"
+    # input_pattern = "./RESULT/data_dict_pandas_*.csv"
     output_file = "merged_multi_output_data.csv"
-    header_check_count = 40
-    merge_single_line_csv_files(input_pattern, output_file, header_check_count)
+    # header_check_count = 40
+    # merge_single_line_csv_files(input_pattern, output_file, header_check_count)
     print("=============================合并完成！=============================")
 
     # 加载数据并反转输入输出关系
