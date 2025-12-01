@@ -38,7 +38,8 @@ def validate_s_parameter_curve(row):
             # print(f"数据点数不足，无法进行验证")
             return False
         else:
-            print(f"数据是{s_values}")
+            print(f"len={len(s_values)}")
+
 
         # 简单的形状验证逻辑
         # 1. 检查是否存在明显的最小值点
