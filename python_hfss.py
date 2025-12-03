@@ -16,12 +16,16 @@ import json
 import re
 import pyaedt
 
+from ansys.aedt.core import Hfss
+from ansys.aedt.core.examples.downloads import download_3dcomponent
+from ansys.aedt.core.generic.file_utils import read_configuration_file
+from ansys.aedt.core.visualization.advanced.farfield_visualization import FfdSolutionData
+from ansys.aedt.core.modeler.advanced_cad.stackup_3d import Stackup3D
+from ansys.aedt.core.generic import file_utils
+
 from pyvista import examples
 pv.set_jupyter_backend("trame")
-from ansys.aedt.core.modeler.advanced_cad.stackup_3d import Stackup3D
-from ansys.aedt.core.visualization.advanced.farfield_visualization import FfdSolutionData
 from django.contrib.messages import success
-from ansys.aedt.core import Hfss
 import matplotlib.pyplot as plt
 
 from typing import List, Dict, Union, Optional, Any
@@ -34,7 +38,8 @@ class AdvancedHFSSEntennaSimulator:
                  NG_MODE=None,
                  AEDT_VERSION=None,
                  NUM_CORES=None,
-                 antenna_params = None,):
+                 antenna_params = None,
+                 array_model = None):
 
         self.output_file_farfield = None
         self.temp_folder = temp_folder
@@ -46,23 +51,11 @@ class AdvancedHFSSEntennaSimulator:
         self.s_parms_min = None
         self.fre_value = None
         self.antenna_params = antenna_params
-        # self.antenna_params = {
-        #     "unit": "GHz", #单位设置
-        #     "start_frequency": 8,  # 起始工作频率 (GHz)
-        #     "stop_frequency": 12,  #截止频率
-        #     "center_frequency": 10,  #中心频率
-        #     "sweep_type": "Fast", #扫描频率设置
-        #     "ground_thickness": 0.035,  # 地板厚度 (mm)
-        #     "signal_layer_thickness": 0.035, #信号线厚度(mm)
-        #     "patch_length": 9.57, # 贴片长度(mm)
-        #     "patch_width": 9.25, #
-        #     "patch_name": "Patch",
-        #     "freq_step" : "2GHz",
-        #     "num_of_freq_points": 101,
-        # }
+        self.group_name = "array"
         self.disc_sweep = None
         self.interp_sweep = None
         self.output_file = None
+        self.array_model = array_model
     def run_full_hfss_simulation(self, train_model):
         print("=" * 80)
         print("开始增强版微带贴片天线 HFSS 仿真流程")
@@ -77,7 +70,6 @@ class AdvancedHFSSEntennaSimulator:
             if not self.designated_unit():
                 return False
             #3. 创建贴片天线
-            # if not self.design_antenna():
             if not self.my_design_antenna():
                 return False
             #4. 定义解决方案设置
@@ -93,6 +85,7 @@ class AdvancedHFSSEntennaSimulator:
             if not self.post_processing(train_model):
                 return False
 
+
             print("=" * 80)
             print("仿真流程完全成功！")
             print("=" * 80)
@@ -107,7 +100,14 @@ class AdvancedHFSSEntennaSimulator:
         finally:
             # 确保关闭 HFSS#完成
             #保存项目
-            self.hfss.save_project()
+            if self.array_model:
+                if not self.hfss.save_project("E:/PythonProject-NNAntenna/HFSS-Project/patch-cell.aedt",overwrite=False):
+                    print("保存项目失败")
+                    return False
+                else:
+                    print("保存项目成功到：E:/PythonProject-NNAntenna/HFSS-Project/patch-cell.aedt")
+            else:
+                self.hfss.save_project()
             self.hfss.release_desktop()
             # Wait 3 seconds to allow AEDT to shut down before cleaning the temporary directory.
             time.sleep(3)
@@ -131,7 +131,8 @@ class AdvancedHFSSEntennaSimulator:
         )
         # self.hfss.set_variable("ANSYSSYS_GPU", "1")
         # self.hfss.hfss_set_solver_options(solver_type="gpu")
-
+        # if self.array_model:
+        #     self.hfss.hybrid = True
         print("=" * 80)
         return True
 
@@ -293,35 +294,60 @@ class AdvancedHFSSEntennaSimulator:
                                                                   0, 0],
                                                         radius=self.antenna_params["lumpedport_D"]/2,
                                                         name="lumped_port",)
-        # feed_port = self.hfss.modeler.create_circle(
-        #                                                 orientation=2,
-        #                                                 origin=[self.antenna_params["feed_center"],
-        #                                                         0, 0],
-        #                                                 radius=self.antenna_params["feed_r1"],
-        #                                                 name="feed_port")
-        # input("回车6")
         create_rectangle = self.hfss.modeler["ground"]
         lumped_port = self.hfss.modeler["lumped_port"]
-        # feed_port = self.hfss.modeler["feed_port"]
         create_rectangle.subtract(lumped_port)
-        # lumped_port.subtract(feed_port)
 
         # input("回车7")
         int_line = [
             [self.antenna_params["feed_center"] + self.antenna_params["lumpedport_D"] / 2, 0, 0],  # 外导体内壁点
             [self.antenna_params["feed_center"] + self.antenna_params["feed_r1"], 0, 0],  # 内导体表面点
         ]
+        # if self.array_model:
+        #     pad_length = [0, 0, 0, 0, 40.816, 40.816]  # Air bounding box buffer in mm. 阵列天线空气盒子间距为0
+        #     # pad_length = [40.816, 40.816, 40.816, 40.816, 40.816, 40.816]  # Air bounding box buffer in mm.
+        # else:
+        #     pad_length = [40.816, 40.816, 40.816, 40.816, 40.816, 40.816]  # Air bounding box buffer in mm.
         pad_length = [40.816, 40.816, 40.816, 40.816, 40.816, 40.816]  # Air bounding box buffer in mm.
-        region = self.hfss.modeler.create_region(pad_length, is_percentage=False, pad_type="Absolute Offset")
-        # input("回车81")
+        # if self.array_model:
+        #     air = self.hfss.modeler.create_box(origin=[-self.antenna_params["sub_length"] / 2,
+        #                                                     -self.antenna_params["sub_width"] / 2,
+        #                                                     -pad_length[4]],
+        #                                         sizes=[self.antenna_params["sub_length"],
+        #                                                    self.antenna_params["sub_width"],
+        #                                                    pad_length[4]*2],
+        #                                         name="air",
+        #                                         material="air",
+        #                                         )
+        #     region_face_list = self.hfss.modeler.get_object_faces("air")
+        #     print(region_face_list)
+        #     # region_face_list_1 = [region_face_list[1], region_face_list[3]]
+        #     # region_face_list_2 = [region_face_list[2], region_face_list[5]]
+        #     # region_face_list_3 = [region_face_list[1],region_face_list[2], region_face_list[0], region_face_list[4]]
+        #     region_face_list_3 = [region_face_list[0], region_face_list[4]]
+        #     # input("回车91")
+        #     self.hfss.assign_radiation_boundary_to_faces(region_face_list_3)
+        #
+        #     # air = self.hfss.modeler.create_region(pad_length, is_percentage=False, pad_type="Absolute Offset",
+        #     #                                          name="air")
+        #     # self.hfss.assign_radiation_boundary_to_objects(air)
+        #     input("回车91")
+        #     # region_face_list_1 = [region_face_list[1], region_face_list[2]]
+        #     # self.hfss.assign_lattice_pair(region_face_list_1)
+        #     #自动周期边界
+        #     pair_names = self.hfss.auto_assign_lattice_pairs(air)
+        #
+        # else:
+        #     region = self.hfss.modeler.create_region(pad_length, is_percentage=False, pad_type="Absolute Offset",
+        #                                              name="Region")
+        #     self.hfss.assign_radiation_boundary_to_objects(region)
+        region = self.hfss.modeler.create_region(pad_length, is_percentage=False, pad_type="Absolute Offset",
+                                                 name="Region")
         self.hfss.assign_radiation_boundary_to_objects(region)
-        # input("回车82")
+
         self.hfss.assign_perfecte_to_sheets(patch)
-        # self.hfss.create_boundary(patch)
-        # input("回车83")
-        # self.hfss.create_boundary(ground)
         self.hfss.assign_perfecte_to_sheets(ground)
-        # input("回车8")
+
         self.hfss.lumped_port(assignment=lumped_port,
                               reference=feed,
                               create_port_sheet=False,
@@ -331,9 +357,63 @@ class AdvancedHFSSEntennaSimulator:
                               name="LumpedPort",
                               renormalize=True,
                               terminals_rename=False)
-
         print("=" * 80)
         return True
+
+    # def array_antenna(self):
+    #     #创建阵列
+    #     print("=== 创建阵列 ===")
+    #     # 校验对象是否存在
+    #     print(f"已创建的几何对象:{self.hfss.modeler.object_names}")
+    #     cell_objects = ["RogersRT", "feed", "patch", "ground", "lumped_port", "air"]
+    #     for obj in cell_objects:
+    #         if obj not in self.hfss.modeler.object_names:
+    #             raise ValueError(f"几何对象 {obj} 不存在！")
+    #
+    #     # 创建Group（PyAEDT 0.22.0支持的分组功能）
+    #     GROUP_NAME = self.group_name
+    #     self.hfss.modeler.create_group(objects=cell_objects, group_name=GROUP_NAME)
+    #     print(f"✅ 已创建分组：{GROUP_NAME}")
+    #
+    #     input("回车93")
+    #     # #复制x轴阵列
+    #     # self.hfss.modeler.duplicate_along_line( assignment =  cell_objects,
+    #     #                                         vector = [self.antenna_params["sub_length"], 0, 0],
+    #     #                                         clones = self.antenna_params["array_number"]
+    #     #                                         )
+    #     # print(f"已创建的几何对象:{self.hfss.modeler.object_names}")
+    #     # #复制y轴阵列
+    #     # cell_objects = self.hfss.modeler.object_names
+    #     # self.hfss.modeler.duplicate_along_line(assignment=cell_objects,
+    #     #                                        vector=[0, self.antenna_params["sub_width"], 0],
+    #     #                                        clones=self.antenna_params["array_number"]
+    #     #                                        )
+    #
+    #     # input("请按回车键继续...")
+    #     #
+    #     # region_face_list_1_4 = self.hfss.modeler.get_object_faces("air_6")
+    #     # region_face_list_2_4 = self.hfss.modeler.get_object_faces("air_1_3")
+    #     # region_face_list_3_4 = self.hfss.modeler.get_object_faces("air_2_3")
+    #     # region_face_list_4_4 = self.hfss.modeler.get_object_faces("air_3_3")
+    #     # region_face_list_4_1 = self.hfss.modeler.get_object_faces("air_3")
+    #     # region_face_list_4_2 = self.hfss.modeler.get_object_faces("air_3_1")
+    #     # region_face_list_4_3 = self.hfss.modeler.get_object_faces("air_3_2")
+    #     # # print(region_face_list)
+    #     # # # region_face_list_1 = [region_face_list[1], region_face_list[3]]
+    #     # # # region_face_list_2 = [region_face_list[2], region_face_list[5]]
+    #     # region_face_list_3 = [region_face_list_1_4[3],
+    #     #                       region_face_list_2_4[3],
+    #     #                       region_face_list_3_4[3],
+    #     #                       region_face_list_4_4[3],
+    #     #                       region_face_list_4_1[5],
+    #     #                       region_face_list_4_2[5],
+    #     #                       region_face_list_4_3[5],
+    #     #                       region_face_list_4_4[5]
+    #     #                       ]
+    #     input("回车91 生成阵列")
+    #     # self.hfss.assign_radiation_boundary_to_faces(region_face_list_3)
+    #     return True
+
     def solution_set(self):
         print("=" * 80)
         print("定义解决方案设置")
@@ -357,6 +437,7 @@ class AdvancedHFSSEntennaSimulator:
             sweep_type=self.antenna_params["sweep_type"],
             num_of_freq_points=self.antenna_params["num_of_freq_points"],
             save_fields=True,
+            # save_rad_fields=True if self.array_model else False
         )
 
         # self.disc_sweep = setup.add_sweep(name="DiscreteSweep", sweep_type="Discrete",
@@ -404,6 +485,9 @@ class AdvancedHFSSEntennaSimulator:
         print("后处理")
         #后处理
 #--------------------------------------------------S参数-------------------------------------------------
+        # if self.array_model:
+        #     print("no s 参数")
+        # else:
         print("S参数")
         plot_data = self.hfss.get_traces_for_plot()
         print(f"polt_data {plot_data}")
@@ -424,12 +508,17 @@ class AdvancedHFSSEntennaSimulator:
             link_to_hfss = True)
         # print("对象类型：", type(ffdata))
         # input("请按回车键继续11...")
-        metadata_file = ffdata.metadata_file
-        farfield_data = FfdSolutionData(input_file=metadata_file)
-        farfield_data.plot_3d(quantity_format="dB10",
-                              output_file='./3D.png',
-                              show=False,
-                              )
+
+        # metadata_file = ffdata.metadata_file
+        # farfield_data = FfdSolutionData(input_file=metadata_file)
+        # farfield_data.plot_3d(quantity_format="dB10",
+        #                       output_file='./3D.png',
+        #                       show=False,
+        #                       )
+        # ffdata.farfield_data.plot_contour(
+        #     quantity="dB10",
+        #     title=f"Contour at {ffdata.farfield_data.frequency * 1E-9:0.1f} GHz"
+        # )
         # print("对象类型：", type(ffdata.farfield_data))
 # --------------------------------------------------保存原始数据到csv-------------------------------------------------
         data = ffdata.farfield_data.combine_farfield(phi_scan=0.0, theta_scan=0.0)
@@ -496,6 +585,9 @@ class AdvancedHFSSEntennaSimulator:
 # --------------------------------------------------提取S最小结果并保存-------------------------------------------------
 #         csv_path = glob.glob("RESULT_S/patch_patch_Plot_*.csv")
 #         print(csv_path[0])
+#         if self.array_model:
+#             print("no s 值")
+#         else:
         csv_path=exported_files[0]
         # min_row_data = self.find_min_in_second_column("./RESULT_S/patch_patch_Plot_36L36E.csv",
         #                                               encoding="utf-8",)
@@ -1225,6 +1317,8 @@ def main():
     AEDT_VERSION = "2025R1"
     NUM_CORES = 4
     NG_MODE = False  # Open AEDT UI when it is launched.
+    array_model = True
+    # array_model = False
 
     antenna_params = {
         "unit": "GHz",  # 单位设置
@@ -1232,8 +1326,6 @@ def main():
         "stop_frequency": 3,  # 截止频率
         "center_frequency": 2.5,  # 中心频率
         "sweep_type": "Interpolating",  # 扫描频率设置
-        # "ground_thickness": 0.035,  # 地板厚度 (mm)
-        # "signal_layer_thickness": 0.035,  # 信号线厚度(mm)
         "patch_length": 39,  # 贴片长度(mm)             10-50
         "patch_width": 48.4,  #                        10-60
         "patch_name": "Patch",
@@ -1251,9 +1343,10 @@ def main():
     # 创建临时目录
     temp_folder = tempfile.TemporaryDirectory(suffix=".ansys")
 
-    simulator = AdvancedHFSSEntennaSimulator(temp_folder, NG_MODE, AEDT_VERSION, NUM_CORES, antenna_params)
+    simulator = AdvancedHFSSEntennaSimulator(temp_folder, NG_MODE, AEDT_VERSION, NUM_CORES, antenna_params, array_model)
     train_model = False
-    success, fre_value, gain_value, s_prams_min, output_file, output_file_farfield  = simulator.run_full_hfss_simulation(train_model)
+
+    success, fre_value, gain_value, s_prams_min, output_file, output_file_farfield = simulator.run_full_hfss_simulation(train_model)
 
     if success:
         print("\n" + "="*80)
