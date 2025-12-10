@@ -279,18 +279,109 @@ class AntennaDataGenerator:
         print(f"文件大小: {os.path.getsize(output_file) / 1024:.2f} KB")
         print(f"包含列数: {len(df.columns)}")
 
+    def generate_patch_param_data_lhs(self, num_samples: int = 5000,
+                                save_to_csv: bool = False,
+                                output_file: str = "./antenna_data_detailed_lhs.csv") -> Tuple[List[Dict], np.ndarray]:
+        """
+        使用拉丁超立方采样生成详细的天线参数数据
+
+        参数:
+        num_samples: 生成的样本数量
+        save_to_csv: 是否保存到CSV文件
+        output_file: 输出CSV文件名
+
+        返回:
+        params_list: 天线参数字典列表
+        y: 性能指标数组 (num_samples, 3)
+        """
+        try:
+            from scipy.stats import qmc
+        except ImportError:
+            print("⚠️  未安装scipy，使用随机采样替代拉丁超立方采样")
+            return self.generate_patch_param_data(num_samples, save_to_csv, output_file)
+
+        print(f"\n开始使用拉丁超立方采样生成 {num_samples} 个天线样本...")
+        start_time = time.time()
+
+        # 定义参数范围
+        n_params = len(self.param_ranges)
+        param_names = list(self.param_ranges.keys())
+        bounds = np.array(list(self.param_ranges.values()))
+
+        # 创建拉丁超立方采样器
+        sampler = qmc.LatinHypercube(d=n_params)
+        sample_scaled = sampler.random(n=num_samples)
+
+        # 缩放到指定范围
+        sample_scaled = qmc.scale(sample_scaled, bounds[:, 0], bounds[:, 1])
+
+        params_list = []
+        y = np.zeros((num_samples, len(self.perf_names)))
+
+        # 生成进度条
+        progress_interval = max(1, num_samples // 50)
+
+        for i in range(num_samples):
+            # 生成天线参数字典
+            antenna_params = {}
+
+            # 添加固定参数
+            antenna_params.update(self.fixed_params)
+
+            # 添加LHS采样的参数
+            for j, param_name in enumerate(param_names):
+                antenna_params[param_name] = sample_scaled[i, j]
+
+            params_list.append(antenna_params)
+
+            # 调用HFSS计算性能
+            train_model = True
+            success, freq_at_s11_min, far_field_gain, s11_min, output_file_exp, output_file_exp_farfield = calculate_from_hfss_py(antenna_params, train_model)
+            y[i] = [s11_min, freq_at_s11_min, far_field_gain]
+
+            # 显示进度
+            if (i + 1) % progress_interval == 0 or i + 1 == num_samples:
+                progress = (i + 1) / num_samples * 100
+                elapsed_time = time.time() - start_time
+                estimated_total_time = elapsed_time / (i + 1) * num_samples
+                remaining_time = estimated_total_time - elapsed_time
+
+                print(f"\r进度: {i + 1}/{num_samples} ({progress:.1f}%), "
+                      f"耗时: {elapsed_time:.1f}s, 剩余: {remaining_time:.1f}s", end="")
+
+        print(f"\n\n拉丁超立方采样数据生成完成！总耗时: {time.time() - start_time:.2f}秒")
+
+        # 显示统计信息
+        self.print_statistics(params_list, y)
+
+        # 保存到CSV
+        if save_to_csv:
+            self.save_to_csv(params_list, y, output_file)
+
+        return params_list, y
+
+
 def Generate_test_data(num_samples):
     """生成天线训练数据"""
     # 创建生成器
     generator = AntennaDataGenerator()
-
-    # 生成测试样本
-    print("\n=== 生成测试数据 ===")
-    params_list, y = generator.generate_patch_param_data(
-        num_samples=num_samples,
-        # save_to_csv=True,
-        # output_file="./antenna_test_data_detailed.csv"
-    )
+    sampling_method = 'lhs'
+    # 根据采样方法生成数据
+    if sampling_method.lower() == 'lhs':
+        print(f"\n=== 使用拉丁超立方采样生成 {num_samples} 个测试数据 ===")
+        # 修改AntennaDataGenerator以支持LHS采样
+        params_list, y = generator.generate_patch_param_data_lhs(
+            num_samples=num_samples,
+            # save_to_csv=True,
+            # output_file="./antenna_test_data_detailed.csv"
+        )
+    else:
+        print(f"\n=== 使用随机采样生成 {num_samples} 个测试数据 ===")
+        params_list, y = generator.generate_patch_param_data(
+            num_samples=num_samples,
+            # save_to_csv=True,
+            # output_file="./antenna_test_data_detailed.csv"
+        )
 
     # 显示前3个样本的详细信息
     print(f"\n=== 前3个样本详细信息 ===")
