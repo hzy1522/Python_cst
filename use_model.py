@@ -13,6 +13,7 @@ from matplotlib import pyplot as plt
 import plotly.graph_objects as go
 import plotly.offline as pyo
 from scipy.interpolate import griddata
+from performance_error_evalution import *
 
 # 添加当前目录到系统路径
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -826,6 +827,57 @@ def use_multi_output_model(model_path, patch_length, patch_width):
                     predict_s11_curve=s_params_pred
                 )
 
+                # 如果有预测结果和实际结果，进行评估
+                if success and output_file and output_file_farfield and s_params_pred is not None:
+                    try:
+                        # 读取HFSS的实际数据
+                        print(f"  读取HFSS的实际数据: {output_file}")
+                        actual_s_params_df = pd.read_csv(output_file)
+                        if 'dB(S(ground_T1,ground_T1)) []' in actual_s_params_df.columns:
+                            actual_s_params = actual_s_params_df['dB(S(ground_T1,ground_T1)) []'].values
+                        else:
+                            actual_s_rameters = actual_s_params_df.values.flatten()
+
+                        # 读取实际的远区场数据
+                        print(f"  读取HFSS的实际远区场数据: {output_file_farfield}")
+                        actual_far_field_df = pd.read_csv(output_file_farfield)
+                        if 'Gain_dB' in actual_far_field_df.columns:
+                            actual_far_field = actual_far_field_df['Gain_dB'].values
+                        else:
+                            actual_far_rametersfield = actual_far_field_df.values.flatten()
+
+                        # 评估S参数
+
+                        s_params_metrics = evaluate_s_parameters(s_params_pred, actual_s_params)
+                        print("📈 S参数评估结果:")
+                        for metric, value in s_params_metrics.items():
+                            if metric == 'mape':
+                                print(f"   {metric.upper()}: {value:.2f}%")
+                            elif metric == 'ssim':
+                                print(f"   {metric.upper()}: {value:.4f}")
+                            else:
+                                print(f"   {metric.upper()}: {value:.6f}")
+
+                        # 评估远区场
+                        far_field_metrics = evaluate_far_field_pattern(far_field_pred, actual_far_field)
+                        print("📊 远区场评估结果:")
+                        for metric, value in far_field_metrics.items():
+                            if metric == 'mape':
+                                print(f"   {metric.upper()}: {value:.2f}%")
+                            elif metric == 'ssim':
+                                print(f"   {metric.upper()}: {value:.4f}")
+                            else:
+                                print(f"   {metric.upper()}: {value:.6f}")
+
+                        # 将评估结果添加到返回结果中
+                        result['evaluation'] = {
+                            's_parameters': s_params_metrics,
+                            'far_field': far_field_metrics
+                        }
+
+                    except Exception as e:
+                        print(f"评估过程出错: {e}")
+
             else:
                 print(f"  HFSS计算失败")
                 hfss_results.append({
@@ -1509,13 +1561,13 @@ if __name__ == "__main__":
     else:
         print(f"❌ 逆向设计失败: {inverse_result.get('error', '未知错误')}")
 
-    print("\n" + "=" * 70)
+    # print("\n" + "=" * 70)
 
-    print("\n" + "=" * 70)
+    # print("\n" + "=" * 70)
     # model_info_path = 'models/multi_output_trained_model.npy'
     # result = use_multi_output_model(model_info_path, 39, 48.4)
     # result = use_multi_output_model(model_info_path, 35, 50)
-    print("\n" + "=" * 70)
+    # print("\n" + "=" * 70)
 
     print("\n" + "=" * 70)
     print("模型使用完成！")
