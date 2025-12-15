@@ -216,7 +216,6 @@ def merge_single_line_csv_files(input_pattern, output_file, header_check_count=4
                             continue
 
                         # 新增：曲线形状验证
-                        print(row)
                         if not validate_s_parameter_curve(row):
                             shape_filtered_count += 1
                             continue

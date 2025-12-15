@@ -8,6 +8,7 @@ import os
 import numpy as np
 import torch
 import pandas as pd
+import time
 from matplotlib import pyplot as plt
 
 import plotly.graph_objects as go
@@ -157,10 +158,13 @@ def use_trained_gan_model(model_info_path='models/trained_gan_model_info.npy',
 
     # 3. 使用GAN生成天线设计
     print(f"\n2. 使用GAN生成天线设计...")
+    generation_start_time = time.time()  # 记录生成开始时间
     try:
         generated_designs, generated_performances = system.generate_antenna_designs(
             target_performances, num_samples=20
         )
+        generation_time = time.time() - generation_start_time  # 计算生成耗时
+        print(f"✅ GAN生成完成，耗时: {generation_time:.2f}秒")
         # 添加空的history字典用于可视化
         history = {
             'generator_loss': [],
@@ -359,7 +363,10 @@ def use_trained_gan_model_prediction_results(model_info_path='models/trained_gan
 
         # s11_curve_predict, s11_min_predict, freq_at_s11_min_predict, far_field_gain_predict = system.predict_s11_from_dimensions(
         #     design[0], design[1])
+        prediction_start_time = time.time()
         s11_curve_predict = system.predict_s11_from_dimensions(design[0], design[1])
+        prediction_time = time.time() - prediction_start_time  # 计算预测耗时
+        print(f"  预测耗时: {prediction_time:.2f}秒")
 
         # 查找S11最小值及其对应的频率点
         s11_min_predict = np.min(s11_curve_predict)
@@ -697,12 +704,13 @@ def use_multi_output_model(model_path, patch_length, patch_width):
     # 进行预测
     try:
         print(f"🔍 开始预测: 长度={patch_length}mm, 宽度={patch_width}mm")
-
+        prediction_start_time = time.time()
         # 在调用预测方法前确保模型已正确初始化
         s_params_pred, far_field_pred = system.predict_s_params_and_far_field(
             patch_length, patch_width, far_field_dim=actual_far_field_dim
         )
-
+        prediction_time = time.time() - prediction_start_time  # 计算预测耗时
+        print(f"S参数&远区场预测耗时: {prediction_time:.2f}秒")
         print(f"📊 预测结果:")
         print(f"   S参数预测: {'成功' if s_params_pred is not None else '失败'}")
         print(f"   远区场预测: {'成功' if far_field_pred is not None else '失败'}")
@@ -715,7 +723,7 @@ def use_multi_output_model(model_path, patch_length, patch_width):
         # 假设标准的 theta(181) x phi(361) 网格
         far_field_matrix = None
         if far_field_pred is not None:
-            print(f"len(far_field_pred) == {len(far_field_pred) } ")
+            # print(f"len(far_field_pred) == {len(far_field_pred) } ")
             if len(far_field_pred) == 37 * 73:
                 far_field_matrix = far_field_pred.reshape(37, 73)
                 print(f"   远区场矩阵维度: {far_field_matrix.shape}")
@@ -1069,6 +1077,7 @@ def use_inverse_model(model_path, s_parameters=None, far_field_pattern=None):
         input_tensor = torch.tensor(input_scaled, dtype=torch.float32).to(device)
 
         # 模型预测
+        generation_start_time = time.time()
         with torch.no_grad():
             predicted_scaled = system.inverse_model(input_tensor)
             predicted_scaled = predicted_scaled.cpu().numpy()
@@ -1076,7 +1085,8 @@ def use_inverse_model(model_path, s_parameters=None, far_field_pattern=None):
         # 反标准化得到实际尺寸
         predicted_dimensions = system.inverse_output_scaler.inverse_transform(predicted_scaled)[0]
         patch_length, patch_width = predicted_dimensions
-
+        generation_time = time.time() - generation_start_time  # 计算生成耗时
+        print(f"✅ 逆向预测完成，耗时: {generation_time:.2f} 秒")
         print(f"📊 预测结果:")
         print(f"   预测长度: {patch_length:.2f} mm")
         print(f"   预测宽度: {patch_width:.2f} mm")
@@ -1516,9 +1526,9 @@ if __name__ == "__main__":
     print("=" * 70)
 
     # 方法1: 直接使用具体的性能数据
-    target_specs_s11, patch_length, patch_width = load_target_specs_from_csv('RESULT/data_dict_pandas_20251125_101258.csv')
+    target_specs_s11, patch_length, patch_width = load_target_specs_from_csv('../RESULT/data_dict_pandas_20251125_101258.csv')
     # print(f"目标性能数据:{target_specs_s11}")
-    target_specs_gain = extract_gain_matrix_from_csv('RESULT/data_dict_pandas_20251125_101258.csv')
+    target_specs_gain = extract_gain_matrix_from_csv('../RESULT/data_dict_pandas_20251125_101258.csv')
     # print(f"目标增益数据:{target_specs_gain}")
     if target_specs_gain is not None:
         inverse_result = use_inverse_model('models/inverse_trained_model.pth',

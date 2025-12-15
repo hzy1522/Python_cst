@@ -297,7 +297,7 @@ def train_inverse_model(create_antenna_data=0, model_save_path='inverse_model.pt
     # 训练逆向模型
     history = system.train_inverse_model(
         X_train, y_train, X_val, y_val,
-        epochs=3000, batch_size=128
+        epochs=2400, batch_size=128
     )
 
     # 3. 保存训练好的模型和相关信息
@@ -400,7 +400,7 @@ def train_multi_output_model(create_antenna_data=0, model_save_path='multi_outpu
 
     # 合并包含S参数和远区场的数据
     print("=============================合并所有数据=============================")
-    input_pattern = "./RESULT/data_dict_pandas_*.csv"
+    input_pattern = "../RESULT/data_dict_pandas_*.csv"
     output_file = "merged_multi_output_data.csv"
     header_check_count = 40
     merge_single_line_csv_files(input_pattern, output_file, header_check_count)
@@ -457,7 +457,7 @@ def train_multi_output_model(create_antenna_data=0, model_save_path='multi_outpu
         print(f"输入数据加载完成: {X_original.shape[0]}个样本")
         print(f"S参数数据维度: {y_s_original.shape}")
         print(f"远区场数据维度: {y_f_original.shape}")
-        print(f"数据为：{y_f_original}")
+        # print(f"数据为：{y_f_original}")
         print("数据预处理完成！")
 
     except Exception as e:
@@ -510,7 +510,7 @@ def train_multi_output_model(create_antenna_data=0, model_save_path='multi_outpu
     # 训练多输出GAN模型
     history = system.train_multi_output_gan(
         X_s_train, y_s_train, X_f_train, y_f_train,
-        epochs=3000, batch_size=128,
+        epochs=2500, batch_size=128,
         far_field_dim=actual_far_field_dim
     )
 
